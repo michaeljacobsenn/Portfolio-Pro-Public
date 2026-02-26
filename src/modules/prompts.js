@@ -539,10 +539,10 @@ Accounts:
 - 401k: (See LIVE APP DATA from Snapshot if enabled)
 
 Holdings & Allocations:
-- Roth IRA: 101.733 shares of VFIFX (Target Allocation: ${config.rothStockPct ?? 90}% Stocks / ${100 - (config.rothStockPct ?? 90)}% Bonds)
-- Brokerage Allocation: ${config.brokerageStockPct ?? 90}% Stocks / ${100 - (config.brokerageStockPct ?? 90)}% Bonds
-- 401k Allocation: ${Number.isFinite(config?.k401StockPct) ? `${config.k401StockPct}% Stocks / ${100 - config.k401StockPct}% Bonds` : '(Follow employer defaults unless told otherwise)'}
-${config?.holdings?.crypto?.length > 0 ? `
+- Roth IRA: ${config?.enableHoldings && config?.holdings?.roth?.length > 0 ? config.holdings.roth.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'} [Target Allocation: ${config.rothStockPct ?? 90}% Stocks / ${100 - (config.rothStockPct ?? 90)}% Bonds]
+- Brokerage Allocation: ${config?.enableHoldings && config?.holdings?.brokerage?.length > 0 ? config.holdings.brokerage.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'} [Allocation: ${config.brokerageStockPct ?? 90}% Stocks / ${100 - (config.brokerageStockPct ?? 90)}% Bonds]
+- 401k Allocation: ${config?.enableHoldings && config?.holdings?.k401?.length > 0 ? config.holdings.k401.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'} [Allocation: ${Number.isFinite(config?.k401StockPct) ? `${config.k401StockPct}% Stocks / ${100 - config.k401StockPct}% Bonds` : '(Follow defaults)'}]
+${(config?.enableHoldings && config?.holdings?.crypto?.length > 0) || (config?.holdings?.crypto?.length > 0) ? `
 Crypto Holdings (Auto-Tracked via Live Market Data):
 ${config.holdings.crypto.map(h => `  - ${h.symbol}: ${h.shares} tokens`).join('\n')}
 Note: Crypto values are auto-calculated from live market data. Treat these as volatile assets — do NOT count toward emergency reserves or liquidity calculations. Include in Net Worth but flag volatility risk.` : ''}
