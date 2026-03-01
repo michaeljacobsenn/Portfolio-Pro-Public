@@ -201,6 +201,7 @@ CORE ROUTING GUARDRAILS (HARD - APPLY ALL AIs):
    - You MUST satisfy Mandatory/Time-Critical gates second.
    - If a conditional safety rule like "pay a safety card to $0" cannot be fully met without breaking the Floor or missing Vault Pace, you MUST allocate the MAXIMUM POSSIBLE PARTIAL PAYMENT that keeps Checking exactly at the Floor, rather than skipping the payment entirely.
    - Explicit Hierarchy: Floor > Fixed Mandates > Time-Critical > Vault > Safety Card > Promo Sprint.
+3. USER NOTES ANTI-DOUBLE-COUNT (HARD): If the user's notes state that a bill, expense, renewal, or charge has ALREADY BEEN PAID and is ALREADY REFLECTED in the provided balances (Checking, Savings, or card balance), you MUST NOT deduct, reserve, or charge that item again. The user-reported balances are the ground truth — they already account for anything the user says is paid. Re-deducting a user-confirmed paid item is a CRITICAL CALCULATION ERROR. Examples: "rent already paid", "insurance already charged to checking", "annual fee already posted" — in each case, skip the deduction entirely and note it as "ALREADY PAID (per user)" in the output.
 
 Section Map (quick reference):
 
@@ -1015,7 +1016,8 @@ Your output MUST perfectly match the following JSON Schema structure:
     "score": 75,
     "grade": "B+",
     "trend": "up",
-    "summary": "One-sentence health summary"
+    "summary": "One-sentence health summary (concise, dashboard headline)",
+    "narrative": "2-3 sentence CFP-caliber financial insight. Lead with the single most impactful observation about their position. Reference specific dollar amounts and dates. Close with one clear, actionable recommendation. Example: 'Your $2,400 emergency buffer puts you in the top 15% of financial resilience, but the $890 Capital One balance at 24.99% APR is costing you $18/month in silent interest. Routing your $120 weekly surplus there eliminates it by March 14th and frees $35/month permanently.'"
   },
   "alertsCard": [
     "Alert item 1",
