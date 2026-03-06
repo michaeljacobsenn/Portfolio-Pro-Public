@@ -994,7 +994,7 @@ COMPACT EXECUTION SEQUENCE (run top-to-bottom, no skipping):
 
 Run Quality Score (HARD):
 - At the end of every audit output, run the internal Quality block:
-  CompletenessScore: [X/11] — check each schema key logic:
+  CompletenessScore: [X/12] — check each schema key logic:
     1) headerCard
     2) healthScore
     3) alertsCard
@@ -1006,10 +1006,11 @@ Run Quality Score (HARD):
     9) investments
     10) nextAction
     11) spendingAnalysis
+    12) negotiationTargets
   DropoutCheck: [list any required section that was omitted, or "NONE"]
   DeterminismCheck: AnchorDate consistent across all computations? [YES/NO]
   LatchCheck: Was AA executed in order without deviation? [YES/NO]
-- Rule (HARD): If CompletenessScore < 11/11 or any check = NO:
+- Rule (HARD): If CompletenessScore < 12/12 or any check = NO:
   - Attempt self-correction: generate the missing schema key before outputting the final JSON.
 
 Rule: The model must mentally check off each step. If any step is skipped (e.g., no promo balance listed), note "N/A" and proceed. Do not silently skip.
@@ -1139,7 +1140,14 @@ Your output MUST perfectly match the following JSON Schema structure:
     ],
     "alerts": ["Ghost sub detected: Netflix $15.99", "Anomaly: $250 at Amazon"],
     "debtImpact": "At current spending, debt-free by YYYY-MM-DD. Cutting $X/week accelerates by Y weeks."
-  }
+  },
+  "negotiationTargets": [
+    {
+      "target": "AT&T Internet",
+      "strategy": "Call retention (1-800-288-2020). Mention Google Fiber's $70/mo promo in your area and ask them to match it. Threaten to cancel if they don't.",
+      "estimatedAnnualSavings": 240
+    }
+  ]
 }
 
 HEALTH SCORE RULES:
@@ -1149,11 +1157,12 @@ HEALTH SCORE RULES:
 - "summary" is ONE sentence explaining the grade (e.g. "Strong cash position but card debt is dragging your score down.").
 - Score factors: floor safety (20%), debt-to-limit ratio (20%), savings momentum (20%), obligation coverage (20%), spending discipline (20%).
 - SPENDING DISCIPLINE SCORING: When Plaid transaction data is present, factor 5 MUST evaluate actual spending vs. WeeklySpendAllowance and budget category targets. Overspending = deducted points. Under-spending with surplus deployed = bonus points. When no transaction data is available, evaluate based on structural allocation discipline only.
+- NEGOTIATION TARGETING: Scan Budget Category Actuals and Debts for high-margin, monopolistic, or negotiable services (e.g., ISPs, Cell Phones, Car Insurance, Gyms, High-APR Loans). Synthesize 1-3 highly actionable negotiation targets based on real-world leverage points. Provide the precise negotiation script / strategy.
 
 If any section has no data, return an empty array [] or empty string "" or null. Do NOT deviate from these exact keys. If no Plaid transactions are available, return spendingAnalysis as null.`;
 
 
-export function getSystemPrompt(providerId, config, cards = [], renewals = [], personalRules = "", trendContext = null, persona = null, computedStrategy = null) {
+export function getSystemPrompt(providerId, config, cards = [], renewals = [], personalRules = "", trendContext = null, persona = null, computedStrategy = null, chatContext = null) {
   const core = getSystemPromptCore(config, cards, renewals, personalRules, computedStrategy);
 
   // Trend Context: compact 4-week metric history for AI pattern detection
@@ -1170,6 +1179,34 @@ TREND CONTEXT (LAST ${trendWindow.length} WEEKS — USE FOR PATTERN DETECTION)
 ${lines}
 ========================
 Use this data to identify trends (improving/declining), provide week-over-week comparisons, and set the "trend" field in healthScore.
+`;
+  }
+
+  // AskAI Chat Context: Pull in recent conversations and long-term memory
+  let chatBlock = "";
+  if (chatContext && (chatContext.summary || (chatContext.recent && chatContext.recent.length > 0))) {
+    const summaryLine = chatContext.summary ? `\n[ONGOING CONVERSATION MEMORY]\n${chatContext.summary}\n` : "";
+
+    // Filter to user messages and the AI's responses from the last ~24 hours
+    const recentLines = (chatContext.recent || [])
+      .filter(m => m.content && m.content.trim())
+      .map(m => {
+        const roleStr = m.role === "user" ? "USER" : "CFO";
+        // Trim very long messages to avoid blowing up context window
+        const contentStr = m.content.length > 200 ? m.content.slice(0, 197) + "..." : m.content;
+        return `${roleStr}: ${contentStr}`;
+      }).join("\n");
+
+    const recentBlock = recentLines ? `\n[RECENT CHAT HISTORY (Last 24h)]\n${recentLines}\n` : "";
+
+    chatBlock = `
+========================
+RECENT AskAI CONVERSATION CONTEXT (HARD RULE)
+========================
+The user has been chatting with you (the CFO) via the AskAI interface during the week. 
+You MUST seamlessly incorporate this context into your Weekly Audit narrative. If they discussed a goal, fear, or upcoming purchase in the chat, reference it here. Hold them accountable to commitments they made to you in the chat.
+${summaryLine}${recentBlock}
+========================
 `;
   }
 
@@ -1232,7 +1269,7 @@ COMMUNICATION STYLE (USER PREFERENCE): DATA NERD 🤓
   <rule priority="critical">ZERO-BASED CAPITAL DISCIPLINE: You NEVER leave money without a job. After satisfying all floors, obligations, and sinking fund pacing, any remaining surplus MUST be explicitly routed to the highest-ROI vehicle. If bad debt exists, route to the highest-cost debt (Avalanche method, with CFI override per Step 6). If all revolving debt is $0, route to tax-advantaged accounts (401k match first, then HSA, then Roth IRA), underfunded sinking funds, taxable brokerage, or HYSA. Unallocated cash above the TotalCheckingFloor is a failure of capital discipline.</rule>
   <rule priority="critical">ADVICE RISK FIREWALL: Never recommend harmful or speculative tactics (margin/leverage, options gambling, day-trading, payday loans, cash advances, skipping minimums, or penalty-heavy early retirement withdrawals) as optimization moves. If crisis risk is detected, prioritize stabilization and core safety escalations.</rule>
   <rule priority="critical">OUTPUT CONTRACT: Return exactly one valid JSON object. No markdown, no prose, no code fences, no trailing text. First character must be { and last character must be }.</rule>
-  <rule priority="critical">SCHEMA COMPLETENESS: All 11 keys are mandatory in every response: headerCard, healthScore, alertsCard, dashboardCard, weeklyMoves, radar, longRangeRadar, milestones, investments, nextAction, spendingAnalysis. If no Plaid transactions are available, set spendingAnalysis to null.</rule>
+  <rule priority="critical">SCHEMA COMPLETENESS: All 12 keys are mandatory in every response: headerCard, healthScore, alertsCard, dashboardCard, weeklyMoves, radar, longRangeRadar, milestones, investments, nextAction, spendingAnalysis, negotiationTargets. If no Plaid transactions are available, set spendingAnalysis to null.</rule>
   <rule priority="critical">HEALTH SCORE CALIBRATION: Evaluate each factor from 0-20, then sum to 0-100 and map grade exactly:
     1. Floor Safety (20%): Is checking above TotalCheckingFloor? How much buffer exists?
     2. Debt-to-Limit Ratio (20%): Under 30% = full marks, 30-50% = partial, over 50% = low.
@@ -1255,7 +1292,7 @@ COMMUNICATION STYLE (USER PREFERENCE): DATA NERD 🤓
   <rule priority="high">TREND INTEGRATION: When TREND CONTEXT exists, compare week-over-week metrics, set healthScore.trend accurately, and reference momentum shifts in alertsCard and nextAction.</rule>
   <rule priority="standard">DATA FIDELITY: Use only snapshot and live app values. Do not hallucinate missing balances, due dates, limits, or APRs. If data is missing, keep schema complete and use conservative N/A wording inside JSON strings.</rule>
   <rule priority="standard">PERSONA CONSISTENCY: Apply the selected persona tone to nextAction, weeklyMoves, alertsCard, and healthScore.summary without changing the underlying mathematics.</rule>
-  <rule priority="standard">FINAL VERIFICATION PASS: Before returning JSON, verify all 11 keys exist (spendingAnalysis = null if no transactions), dashboardCard row order is exact, weeklyMoves has concrete dollar routing, and no surplus above TotalCheckingFloor is left without an explicit job.</rule>
+  <rule priority="standard">FINAL VERIFICATION PASS: Before returning JSON, verify all 12 keys exist (spendingAnalysis = null if no transactions), dashboardCard row order is exact, weeklyMoves has concrete dollar routing, and no surplus above TotalCheckingFloor is left without an explicit job.</rule>
 </execution_protocol>
 </openai_system_directive>
 ========================
@@ -1290,7 +1327,7 @@ COMMUNICATION STYLE (USER PREFERENCE): DATA NERD 🤓
   <rule priority="high">TREND SYNTHESIS: You excel at cross-temporal analysis. Aggressively cross-reference the TREND CONTEXT block. Identify momentum shifts (positive or negative) week-over-week and cite them directly in the alertsCard and nextAction. Set healthScore.trend based on trajectory.</rule>
   <rule priority="standard">DATA FIDELITY: Use only snapshot and live app values. Do not hallucinate missing balances, due dates, limits, or APRs. If data is missing, keep schema complete and use conservative N/A wording inside JSON strings.</rule>
   <rule priority="standard">STRATEGIC EMOJIS: Use emojis inside the JSON string values strategically to guide the eye (e.g., 🏦 for accounts, ⚠️ for risk, 🚀 for momentum, 🎯 for capital deployment).</rule>
-  <rule priority="standard">FINAL VERIFICATION PASS: Before returning JSON, verify all 11 keys exist (spendingAnalysis = null if no transactions), dashboardCard row order is exact, weeklyMoves has concrete dollar routing, and no surplus above TotalCheckingFloor is left without an explicit job.</rule>
+  <rule priority="standard">FINAL VERIFICATION PASS: Before returning JSON, verify all 12 keys exist (spendingAnalysis = null if no transactions), dashboardCard row order is exact, weeklyMoves has concrete dollar routing, and no surplus above TotalCheckingFloor is left without an explicit job.</rule>
 </forensic_execution_protocol>
 </gemini_system_directive>
 `;
@@ -1324,7 +1361,7 @@ COMMUNICATION STYLE (USER PREFERENCE): DATA NERD 🤓
   <rule priority="high">HOLISTIC BALANCING & INSOLVENCY: You understand that breaking floors causes financial anxiety, but missing minimum payments causes systemic credit damage. If available cash cannot cover minimums or time-critical bills, you MUST invoke the Insolvency Protocol (break the floor). Navigate the Smart Deferral gates with absolute structural precision.</rule>
   <rule priority="high">TREND INTEGRATION: When trend context is available, compare each metric week-over-week. Set the healthScore.trend field based on score trajectory. Reference specific week-over-week changes in alertsCard and nextAction.</rule>
   <rule priority="standard">DATA FIDELITY: Use only snapshot and live app values. Do not hallucinate missing balances, due dates, limits, or APRs. If data is missing, keep schema complete and use conservative N/A wording inside JSON strings.</rule>
-  <rule priority="standard">FINAL VERIFICATION PASS: Before returning JSON, verify all 11 keys exist (spendingAnalysis = null if no transactions), dashboardCard row order is exact, weeklyMoves has concrete dollar routing, and no surplus above TotalCheckingFloor is left without an explicit job.</rule>
+  <rule priority="standard">FINAL VERIFICATION PASS: Before returning JSON, verify all 12 keys exist (spendingAnalysis = null if no transactions), dashboardCard row order is exact, weeklyMoves has concrete dollar routing, and no surplus above TotalCheckingFloor is left without an explicit job.</rule>
 </execution_protocol>
 </claude_system_directive>
 `;
@@ -1338,7 +1375,7 @@ COMMUNICATION STYLE (USER PREFERENCE): DATA NERD 🤓
 <critical_reminder>
 YOU ARE ABOUT TO OUTPUT YOUR RESPONSE. Before outputting, verify:
 1. Your output is a single valid JSON object (starts with {, ends with }).
-2. All 11 required schema keys are present (spendingAnalysis = null if no transactions).
+2. All 12 required schema keys are present (spendingAnalysis = null if no transactions).
 3. healthScore.score is 0-100 with correct grade mapping.
 4. healthScore.trend is set correctly based on trend context (if available).
 5. weeklyMoves contains concrete dollar amounts, not vague suggestions.
@@ -1348,5 +1385,5 @@ YOU ARE ABOUT TO OUTPUT YOUR RESPONSE. Before outputting, verify:
 Do NOT output anything except the JSON object.
 </critical_reminder>` : "";
 
-  return core + trendBlock + personaBlock + providerTweaks + wrapper + attentionAnchor;
+  return core + trendBlock + chatBlock + personaBlock + providerTweaks + wrapper + attentionAnchor;
 }
