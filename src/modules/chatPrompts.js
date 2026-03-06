@@ -65,6 +65,28 @@ function buildFinancialContext(current, financialConfig, cards, renewals, histor
         const fc = financialConfig;
         parts.push("\n## Income & Budget");
 
+        // Calculate Estimated Monthly Net Income & Minimums for structural ratios
+        let estMonthlyIncome = 0;
+        if (fc.incomeType === "hourly") {
+            estMonthlyIncome = (fc.hourlyRateNet || 0) * (fc.typicalHours || 0) * 4.33;
+        } else if (fc.incomeType === "variable") {
+            estMonthlyIncome = (fc.averagePaycheck || 0) * 4.33;
+        } else {
+            const freq = fc.payFrequency || "bi-weekly";
+            const pay = fc.paycheckStandard || 0;
+            if (freq === "weekly") estMonthlyIncome = pay * 4.33;
+            else if (freq === "bi-weekly") estMonthlyIncome = pay * 2.16;
+            else if (freq === "semi-monthly") estMonthlyIncome = pay * 2;
+            else if (freq === "monthly") estMonthlyIncome = pay;
+        }
+
+        let totalMonthlyMins = 0;
+        (cards || []).forEach(c => totalMonthlyMins += (parseFloat(c.minPayment || c.minimum) || 0));
+        (fc.nonCardDebts || []).forEach(d => totalMonthlyMins += (parseFloat(d.minPayment || d.minimum) || 0));
+
+        if (estMonthlyIncome > 0) parts.push(`Estimated Monthly Net Income: ${fmt(estMonthlyIncome)}`);
+        if (totalMonthlyMins > 0) parts.push(`Total Monthly Debt Minimums: ${fmt(totalMonthlyMins)}`);
+
         if (fc.paycheckStandard > 0) parts.push(`Standard Paycheck: ${fmt(fc.paycheckStandard)} (${fc.payFrequency || "bi-weekly"})`);
         if (fc.paycheckFirstOfMonth > 0) parts.push(`1st-of-Month Paycheck: ${fmt(fc.paycheckFirstOfMonth)}`);
         if (fc.incomeType === "hourly") {
@@ -195,7 +217,7 @@ function buildFinancialContext(current, financialConfig, cards, renewals, histor
             totalLimit += lim;
             const util = lim > 0 ? ((bal / lim) * 100).toFixed(1) : "N/A";
             const apr = c.apr ? `${c.apr}% APR` : "";
-            parts.push(`  - ${c.name || "Card"}: ${fmt(bal)} / ${fmt(lim)} (${util}% util) ${apr}`);
+            parts.push(`  - ${c.name || "Card"}: ${fmt(bal)} / ${fmt(lim)} (${util}% util) ${apr}, min payment ${fmt(c.minimum || c.minPayment || 0)}`);
         });
         parts.push(`  Total CC Debt: ${fmt(totalBalance)}, Total Limits: ${fmt(totalLimit)}, Overall Util: ${totalLimit > 0 ? ((totalBalance / totalLimit) * 100).toFixed(1) : "N/A"}%`);
     }
