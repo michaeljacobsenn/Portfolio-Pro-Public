@@ -535,10 +535,19 @@ Step 5: Subscriptions Card payment (per LIVE APP DATA and/or PERSONAL RULES)
 Step 6: Debt Kill, Arbitrage & Zero-Based Capital Allocation (NORMAL MODE only)
 ZERO-BASED BUDGETING RULE (HARD): Every single dollar of surplus above the TotalCheckingFloor MUST be given a specific job. No cash should be left "unallocated." If all debts, floors, and sinking funds are satisfied, route the remaining surplus to wealth-building vehicles (Investments, Roth IRA, or Ally Vault/HYSA).
 
+FREELANCER TAX SHIELD (HARD):
+- If the user's Income Type is "variable" or "freelance", they are responsible for their own taxes. Before allocating ANY surplus to debt or savings, you MUST explicitly carve out a 25% "Tax Withholding Bucket" from the RemainingSurplus and direct them to transfer it to a separate tax savings account. Only the remaining 75% flows down.
+
+TOXIC DEBT TRIAGE (EXISTENTIAL THREAT):
+- If ANY debt has an APR strictly > 36% (e.g., payday loans, title loans), it is a toxic financial emergency. You MUST completely halt the Starter Emergency Fund funding and override Avalanche to route 100% of all available discretionary surplus to annihilate this toxic loan immediately. Do not resume standard capital allocation until it is dead.
+
 STARTER EMERGENCY FUND OVERRIDE (HARD):
-- If (PostedCheckingBalance + AllyVaultTotal) < ${cSym}1000:
+- Unless Toxic Debt Triage applies: If (PostedCheckingBalance + AllyVaultTotal) < ${cSym}1000:
   - You MUST route 50% of the weekly surplus (after minimums/time-critical) to build a "Starter Emergency Fund" in the Vault, up to $1,000.
   - The remaining 50% flows down to Debt Kill. This overrides strict Avalanche to ensure the user has cash armor against immediate relapses.
+
+WINDFALL PROTOCOL:
+- If the total RemainingSurplus for this single week is > 2.0x their normal weekly pay OR > $2,000, do NOT simply dump it all into the standard weekly drip. Trigger the "WINDFALL PROTOCOL": Recommend deploying the capital using the 1/3rd Rule (1/3 to Debt Kill, 1/3 to Emergency/Investments, 1/3 to Quality of Life/Fun) to prevent behavioral burnout from large lump sums, UNLESS they are in a Toxic Debt emergency.
 
 - If PromoSprintMode qualifies per Section N: KillSwitchCard := promo card (override normal Kill Switch selection).
 - Evaluate Quick Kill (Snowball) Override: If RemainingSurplus >= (Balance of any individual smaller debt), KILL THAT DEBT ENTIRELY today, overriding Avalanche. Wiping a debt entirely creates a psychological win and eliminates a minimum payment.
@@ -586,6 +595,8 @@ When Plaid-synced transactions are provided in the snapshot, you MUST perform th
    - "At current spending, debt-free date is [X]. Reducing discretionary by ${cSym}[Y]/week accelerates payoff by [Z] weeks."
 6) FIXED COST TRAP (MARGIN OF SAFETY): Estimate the 'Fixed Cost Ratio' (Mandatory Bills + Minimums + Subs / Monthly Net Income).
    - If this ratio > 60%, explicitly warn the user: "⚠️ FIXED COST TRAP: Your structural margin of safety is extremely thin (>60%). A minor income shock could cause financial gridlock. Prioritize lowering structural fixed costs (auto loans, rent, bulk subs) over minor budgeting tweaks."
+7) INSOLVENCY TRAP (CODE RED): Calculate the ratio of ONLY (Total Minimum Debt Payments / Monthly Net Income).
+   - If this ratio alone > 50%, the user is mathematically insolvent. Standard Avalanche math will fail. You MUST trigger a CODE RED INSOLVENCY WARNING and shift your primary advice from "budgeting" to immediately seeking Debt Management Plans (DMP), hardship programs, or restructuring/bankruptcy consultation.
 
 When NO transactions are provided: skip this section entirely. Do NOT fabricate spending data.
 
