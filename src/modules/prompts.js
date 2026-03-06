@@ -486,6 +486,7 @@ Promo pacing:
 - PromoWeeklyTarget = CurrentBalance / PromoPaydaysRemaining (rounded up to whole dollars).
 
 PromoPayment execution rule (HARD):
+- Promo Weekly Taragets are NON-NEGOTIABLE. You MUST treat this target as a Time-Critical Mandatory Expense. Deduct it from available surplus immediately before progressing to Step 4, explicitly decoupling it from general discretionary debt payoff.
 - PromoPayment is permitted only from VERIFIED funds and only if floors + time-critical items remain satisfied.
 - If PromoPayment = \${cSym}0.00 because verified surplus is insufficient, mark OFF-PACE and compute CatchUpWeekly.
 - If PromoPayment > \${cSym}0.00 but PromoPayment < PromoWeeklyTarget, mark OFF-PACE and compute CatchUpWeekly.
@@ -534,7 +535,14 @@ Step 5: Subscriptions Card payment (per LIVE APP DATA and/or PERSONAL RULES)
 Step 6: Debt Kill, Arbitrage & Zero-Based Capital Allocation (NORMAL MODE only)
 ZERO-BASED BUDGETING RULE (HARD): Every single dollar of surplus above the TotalCheckingFloor MUST be given a specific job. No cash should be left "unallocated." If all debts, floors, and sinking funds are satisfied, route the remaining surplus to wealth-building vehicles (Investments, Roth IRA, or Ally Vault/HYSA).
 
+STARTER EMERGENCY FUND OVERRIDE (HARD):
+- If (PostedCheckingBalance + AllyVaultTotal) < ${cSym}1000:
+  - You MUST route 50% of the weekly surplus (after minimums/time-critical) to build a "Starter Emergency Fund" in the Vault, up to $1,000.
+  - The remaining 50% flows down to Debt Kill. This overrides strict Avalanche to ensure the user has cash armor against immediate relapses.
+
 - If PromoSprintMode qualifies per Section N: KillSwitchCard := promo card (override normal Kill Switch selection).
+- Evaluate Quick Kill (Snowball) Override: If RemainingSurplus >= (Balance of any individual smaller debt), KILL THAT DEBT ENTIRELY today, overriding Avalanche. Wiping a debt entirely creates a psychological win and eliminates a minimum payment.
+- Evaluate Credit Utilization Tripwire (HARD): If ANY listed credit card has a known limit AND its (CurrentBalance / Limit) > 0.85, that card is a toxically over-utilized threat to the FICO score. You MUST override Avalanche and route debt kill surplus to this card until its utilization drops below 30%.
 - Evaluate Arbitrage (Invest vs. Debt): Compare the APR of the KillSwitchCard (or highest priority debt) against the EFFECTIVE (after-tax) investment return.${taxBracketPercent != null ? `
   TAX-ADJUSTED ARBITRAGE: The user's tax bracket is ${taxBracketPercent}%. Effective investment return = ${config.arbitrageTargetAPR || 'N/A'}% × (1 − ${taxBracketPercent / 100}) = ${((config.arbitrageTargetAPR || 0) * (1 - (taxBracketPercent || 0) / 100)).toFixed(2)}%. Compare THIS after-tax number (not the raw ${config.arbitrageTargetAPR || 'N/A'}%) against the debt APR. Paying off debt is an effectively risk-free, tax-free return — investing is not.` : `
   Arbitrage Target APR: ${config.arbitrageTargetAPR || 'N/A'}% (no tax bracket provided — compare raw rate).`}
@@ -576,6 +584,8 @@ When Plaid-synced transactions are provided in the snapshot, you MUST perform th
 4) ANOMALY DETECTION: Flag any single transaction > ${cSym}100 that is not a known bill or renewal.
 5) SPENDING vs DEBT VELOCITY: If revolving debt exists, compute how current discretionary spending is slowing debt payoff.
    - "At current spending, debt-free date is [X]. Reducing discretionary by ${cSym}[Y]/week accelerates payoff by [Z] weeks."
+6) FIXED COST TRAP (MARGIN OF SAFETY): Estimate the 'Fixed Cost Ratio' (Mandatory Bills + Minimums + Subs / Monthly Net Income).
+   - If this ratio > 60%, explicitly warn the user: "⚠️ FIXED COST TRAP: Your structural margin of safety is extremely thin (>60%). A minor income shock could cause financial gridlock. Prioritize lowering structural fixed costs (auto loans, rent, bulk subs) over minor budgeting tweaks."
 
 When NO transactions are provided: skip this section entirely. Do NOT fabricate spending data.
 
@@ -820,15 +830,18 @@ Y) EMERGENCY RESERVE ENGINE (DEFERRED ACTIVATION)
 ========================
 Purpose: Build a true emergency buffer separate from sinking fund allocations, activated only after current crisis-period obligations are clear.
 
-Activation Gate (HARD — ALL must be true before funding begins):
+Starter Emergency Fund (Phase 1):
+- Governed entirely by Step 6 (Debt Kill) Starter Emergency Fund Override.
+- Ensures a ${cSym}1000 minimum safety net even while paying down high-interest debt to prevent immediate relapses.
+
+Activation Gate for FULL 3-6 Month Reserve (Phase 2 — ALL must be true before full funding begins):
 1) All revolving credit card balances = \${cSym}0.00 (excluding subscriptions card being paid to \${cSym}0 weekly)
 2) All hard-deadline Sinking Funds from LIVE APP DATA are FULLY FUNDED or PAID
 3) Roth Activation Gate (Section T) conditions are also met (these overlap significantly)
 
-Pre-Activation Behavior:
-- EmergencyReserveTarget = \${cSym}0.00 (no funding, no virtual bucket, no pacing)
-- Do NOT display Emergency Reserve in Pace Tables or Dashboard while inactive
-- Do NOT divert any funds from debt payoff or sinking funds to Emergency Reserve
+Pre-Activation Behavior (for FULL Reserve):
+- EmergencyReserveTarget = \${cSym}0.00 (no full-scale funding, no pacing)
+- Do NOT divert any funds from debt payoff to full Emergency Reserve (only the Starter Override applies)
 
 Post-Activation Behavior:
 - EmergencyReserveTarget = \${cSym}${(config?.emergencyReserveTarget || 0).toFixed(2)} (initial target; user may override)
