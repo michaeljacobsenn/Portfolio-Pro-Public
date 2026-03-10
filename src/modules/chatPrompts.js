@@ -14,310 +14,374 @@ import { fmt, extractDashboardMetrics } from "./utils.js";
  * Intentionally lean — we want the AI to reason, not regurgitate.
  */
 function buildFinancialContext(current, financialConfig, cards, renewals, history, computedStrategy, trendContext) {
-    const parts = [];
-    const p = current?.parsed;
-    const form = current?.form;
-    const fc = financialConfig; // Alias financialConfig to fc for convenience
+  const parts = [];
+  const p = current?.parsed;
+  const form = current?.form;
+  const fc = financialConfig; // Alias financialConfig to fc for convenience
 
-    // ── Core Position ──
-    if (p || form) {
-        parts.push("## Current Financial Position");
+  // ── Core Position ──
+  if (p || form) {
+    parts.push("## Current Financial Position");
 
-        if (fc?.birthYear) {
-            const currentYear = new Date().getFullYear();
-            const age = currentYear - fc.birthYear;
-            const yearsToRetirement = Math.max(0, Math.round(fc.birthYear + 59.5 - currentYear));
-            parts.push(`User Age Details: Born ${fc.birthYear} (Age ${age}). Years until age 59½ (retirement access): ${yearsToRetirement}`);
-        }
-        if (p?.netWorth != null) {
-            // Reconstruct liquid assets exactly as the engine does
-            const liquidAssets = (fc?.paycheckDepositAccount === 'savings' ? 0 : (fc?.checkingBalance || 0)) +
-                (fc?.paycheckDepositAccount === 'checking' ? 0 : (fc?.vaultBalance || 0)) +
-                (fc?.brokerageBalance || 0) + (fc?.cryptoBalance || 0);
-            const totalDebt = (fc?.cardDebts?.reduce((acc, c) => acc + (c.balance || 0), 0) || 0) +
-                (fc?.nonCardDebts?.reduce((acc, c) => acc + (c.balance || 0), 0) || 0);
+    if (fc?.birthYear) {
+      const currentYear = new Date().getFullYear();
+      const age = currentYear - fc.birthYear;
+      const yearsToRetirement = Math.max(0, Math.round(fc.birthYear + 59.5 - currentYear));
+      parts.push(
+        `User Age Details: Born ${fc.birthYear} (Age ${age}). Years until age 59½ (retirement access): ${yearsToRetirement}`
+      );
+    }
+    if (p?.netWorth != null) {
+      // Reconstruct liquid assets exactly as the engine does
+      const liquidAssets =
+        (fc?.paycheckDepositAccount === "savings" ? 0 : fc?.checkingBalance || 0) +
+        (fc?.paycheckDepositAccount === "checking" ? 0 : fc?.vaultBalance || 0) +
+        (fc?.brokerageBalance || 0) +
+        (fc?.cryptoBalance || 0);
+      const totalDebt =
+        (fc?.cardDebts?.reduce((acc, c) => acc + (c.balance || 0), 0) || 0) +
+        (fc?.nonCardDebts?.reduce((acc, c) => acc + (c.balance || 0), 0) || 0);
 
-            parts.push(`Net Worth: ${fmt(p.netWorth)}`);
-            parts.push(`Liquid Net Worth: ${fmt(liquidAssets - totalDebt)} (Excludes Roth/401k/HSA/home/vehicle)`);
-        }
-        if (p?.netWorthDelta) parts.push(`Net Worth Delta (vs last audit): ${p.netWorthDelta}`);
+      parts.push(`Net Worth: ${fmt(p.netWorth)}`);
+      parts.push(`Liquid Net Worth: ${fmt(liquidAssets - totalDebt)} (Excludes Roth/401k/HSA/home/vehicle)`);
+    }
+    if (p?.netWorthDelta) parts.push(`Net Worth Delta (vs last audit): ${p.netWorthDelta}`);
 
-        const metrics = extractDashboardMetrics(p);
-        if (metrics.checking != null) parts.push(`Checking Balance: ${fmt(metrics.checking)}`);
-        if (metrics.vault != null) parts.push(`Savings/Vault: ${fmt(metrics.vault)}`);
-        if (metrics.available != null) parts.push(`Available After Obligations: ${fmt(metrics.available)}`);
-        if (metrics.pending != null) parts.push(`Upcoming Obligations (7 days): ${fmt(metrics.pending)}`);
-        if (metrics.debts != null) parts.push(`Total Debt Balance: ${fmt(metrics.debts)}`);
+    const metrics = extractDashboardMetrics(p);
+    if (metrics.checking != null) parts.push(`Checking Balance: ${fmt(metrics.checking)}`);
+    if (metrics.vault != null) parts.push(`Savings/Vault: ${fmt(metrics.vault)}`);
+    if (metrics.available != null) parts.push(`Available After Obligations: ${fmt(metrics.available)}`);
+    if (metrics.pending != null) parts.push(`Upcoming Obligations (7 days): ${fmt(metrics.pending)}`);
+    if (metrics.debts != null) parts.push(`Total Debt Balance: ${fmt(metrics.debts)}`);
 
-        // Health score
-        const hs = p?.healthScore;
-        if (hs?.score != null) {
-            parts.push(`\nHealth Score: ${hs.score}/100 (${hs.grade || "?"}) — Trend: ${hs.trend || "flat"}`);
-            if (hs.summary) parts.push(`Summary: ${hs.summary}`);
-        }
-
-        parts.push(`Status: ${p?.status || "UNKNOWN"}`);
-        if (current?.date) parts.push(`Last Audit Date: ${current.date}`);
+    // Health score
+    const hs = p?.healthScore;
+    if (hs?.score != null) {
+      parts.push(`\nHealth Score: ${hs.score}/100 (${hs.grade || "?"}) — Trend: ${hs.trend || "flat"}`);
+      if (hs.summary) parts.push(`Summary: ${hs.summary}`);
     }
 
-    // ── Config: Income & Budgets ──
-    if (financialConfig) {
-        const fc = financialConfig;
-        parts.push("\n## Income & Budget");
+    parts.push(`Status: ${p?.status || "UNKNOWN"}`);
+    if (current?.date) parts.push(`Last Audit Date: ${current.date}`);
+  }
 
-        // Calculate Estimated Monthly Net Income & Minimums for structural ratios
-        let estMonthlyIncome = 0;
-        if (fc.incomeType === "hourly") {
-            estMonthlyIncome = (fc.hourlyRateNet || 0) * (fc.typicalHours || 0) * 4.33;
-        } else if (fc.incomeType === "variable") {
-            estMonthlyIncome = (fc.averagePaycheck || 0) * 4.33;
-        } else {
-            const freq = fc.payFrequency || "bi-weekly";
-            const pay = fc.paycheckStandard || 0;
-            if (freq === "weekly") estMonthlyIncome = pay * 4.33;
-            else if (freq === "bi-weekly") estMonthlyIncome = pay * 2.16;
-            else if (freq === "semi-monthly") estMonthlyIncome = pay * 2;
-            else if (freq === "monthly") estMonthlyIncome = pay;
-        }
+  // ── Config: Income & Budgets ──
+  if (financialConfig) {
+    const fc = financialConfig;
+    parts.push("\n## Income & Budget");
 
-        let totalMonthlyMins = 0;
-        (cards || []).forEach(c => totalMonthlyMins += (parseFloat(c.minPayment || c.minimum) || 0));
-        (fc.nonCardDebts || []).forEach(d => totalMonthlyMins += (parseFloat(d.minPayment || d.minimum) || 0));
-
-        if (estMonthlyIncome > 0) parts.push(`Estimated Monthly Net Income: ${fmt(estMonthlyIncome)}`);
-        if (totalMonthlyMins > 0) parts.push(`Total Monthly Debt Minimums: ${fmt(totalMonthlyMins)}`);
-
-        if (fc.paycheckStandard > 0) parts.push(`Standard Paycheck: ${fmt(fc.paycheckStandard)} (${fc.payFrequency || "bi-weekly"})`);
-        if (fc.paycheckFirstOfMonth > 0) parts.push(`1st-of-Month Paycheck: ${fmt(fc.paycheckFirstOfMonth)}`);
-        if (fc.incomeType === "hourly") {
-            if (fc.hourlyRateNet > 0) parts.push(`Hourly Rate (Net): ${fmt(fc.hourlyRateNet)}/hr`);
-            if (fc.typicalHours > 0) parts.push(`Typical Hours/Paycheck: ${fc.typicalHours} hrs`);
-        } else if (fc.incomeType === "variable" && fc.averagePaycheck > 0) {
-            parts.push(`Average Paycheck (Variable): ${fmt(fc.averagePaycheck)}`);
-        }
-        if (fc.payday) parts.push(`Payday: ${fc.payday}`);
-        if (fc.weeklySpendAllowance > 0) parts.push(`Weekly Spend Allowance: ${fmt(fc.weeklySpendAllowance)}`);
-        if (fc.emergencyFloor > 0) parts.push(`Emergency Floor: ${fmt(fc.emergencyFloor)}`);
-        if (fc.checkingBuffer > 0) parts.push(`Checking Buffer: ${fmt(fc.checkingBuffer)}`);
-        if (fc.greenStatusTarget > 0) parts.push(`Green Status Target: ${fmt(fc.greenStatusTarget)}`);
-        if (fc.emergencyReserveTarget > 0) parts.push(`Emergency Reserve Target: ${fmt(fc.emergencyReserveTarget)}`);
-
-        // Contractor / Tax / State info
-        if (fc.stateCode) {
-            parts.push(`\nUS State for Tax Modeling: ${fc.stateCode}`);
-        }
-        if (fc.isContractor) {
-            parts.push(`\nTax Status: Self-Employed / Contractor`);
-            if (fc.taxWithholdingRate > 0) parts.push(`Tax Withholding Rate: ${fc.taxWithholdingRate}%`);
-            if (fc.quarterlyTaxEstimate > 0) parts.push(`Quarterly Tax Estimate: ${fmt(fc.quarterlyTaxEstimate)}`);
-        }
-
-        // Additional income sources
-        if (fc.incomeSources?.length > 0) {
-            parts.push("\nAdditional Income:");
-            fc.incomeSources.forEach(s => {
-                parts.push(`  - ${s.name}: ${fmt(s.amount || 0)} (${s.frequency})`);
-            });
-        }
-
-        // Budget categories
-        if (fc.budgetCategories?.length > 0) {
-            parts.push("\nMonthly Budget:");
-            fc.budgetCategories.forEach(c => {
-                parts.push(`  - ${c.name}: ${fmt(c.monthlyTarget || 0)}/mo`);
-            });
-        }
-
-        // Savings goals
-        if (fc.savingsGoals?.length > 0) {
-            parts.push("\nSavings Goals:");
-            fc.savingsGoals.forEach(g => {
-                parts.push(`  - ${g.name}: ${fmt(g.currentAmount || 0)} / ${fmt(g.targetAmount || 0)}`);
-            });
-        }
-
-        // Non-card debts
-        if (fc.nonCardDebts?.length > 0) {
-            parts.push("\nNon-Card Debts:");
-            fc.nonCardDebts.forEach(d => {
-                parts.push(`  - ${d.name}: ${fmt(d.balance || 0)} at ${d.apr || 0}% APR, min payment ${fmt(d.minimum || d.minPayment || 0)}`);
-            });
-        }
-
-        // Assets
-        const assetParts = [];
-        if (fc.homeEquity > 0) assetParts.push(`Home Equity: ${fmt(fc.homeEquity)}`);
-        if (fc.vehicleValue > 0) assetParts.push(`Vehicle: ${fmt(fc.vehicleValue)}`);
-        if (fc.otherAssets > 0) assetParts.push(`${fc.otherAssetsLabel || "Other"}: ${fmt(fc.otherAssets)}`);
-        if (assetParts.length > 0) {
-            parts.push("\nOther Assets:");
-            assetParts.forEach(a => parts.push(`  - ${a}`));
-        }
-
-        // Credit profile
-        if (fc.creditScore) {
-            parts.push(`\nCredit Score: ${fc.creditScore}${fc.creditScoreDate ? ` (as of ${fc.creditScoreDate})` : ""}`);
-            if (fc.creditUtilization != null) parts.push(`Credit Utilization: ${fc.creditUtilization}%`);
-        }
-
-        // Insurance deductibles
-        if (fc.insuranceDeductibles?.length > 0) {
-            parts.push("\nInsurance Deductibles:");
-            fc.insuranceDeductibles.forEach(ins => {
-                parts.push(`  - ${ins.type}: Deductible ${fmt(ins.deductible || 0)}, Premium ${fmt(ins.annualPremium || 0)}/yr`);
-            });
-        }
-
-        // Big-ticket purchase plans
-        if (fc.bigTicketItems?.length > 0) {
-            parts.push("\nPlanned Big-Ticket Purchases:");
-            fc.bigTicketItems.forEach(it => {
-                parts.push(`  - ${it.name}: ${fmt(it.cost || 0)}${it.targetDate ? ` by ${it.targetDate}` : ""} [${it.priority || "medium"} priority]`);
-            });
-        }
-
-        // 401k employer match (critical for investment priority advice)
-        if (fc.track401k && (fc.k401EmployerMatchPct > 0 || fc.k401EmployerMatchLimit > 0)) {
-            parts.push(`\n401(k) Employer Match: ${fc.k401EmployerMatchPct || 0}% up to ${fc.k401EmployerMatchLimit || 0}% of salary`);
-        }
-
-        // Arbitrage target (debt vs invest threshold)
-        if (fc.arbitrageTargetAPR > 0) {
-            parts.push(`Debt vs. Invest Threshold: ${fc.arbitrageTargetAPR}% expected return`);
-        }
-
-        // Tax bracket
-        if (fc.taxBracketPercent > 0) {
-            parts.push(`Tax Bracket: ${fc.taxBracketPercent}%`);
-        }
-
-        // Min liquidity floor
-        if (fc.minCashFloor > 0) {
-            parts.push(`Min Liquidity Floor (HARD): ${fmt(fc.minCashFloor)} — AI must never recommend dropping below this`);
-        }
-
-        // Habit tracking
-        if (fc.trackHabits !== false && fc.habitName) {
-            parts.push(`\nHabit Tracking:`);
-            parts.push(`  - Habit: ${fc.habitName}`);
-            parts.push(`  - Current Count: ${fc.habitCount || 0}`);
-            parts.push(`  - Restock Cost: ${fmt(fc.habitRestockCost || 0)}`);
-            parts.push(`  - Critical Threshold: ${fc.habitCriticalThreshold || 3}`);
-        }
+    // Calculate Estimated Monthly Net Income & Minimums for structural ratios
+    let estMonthlyIncome = 0;
+    if (fc.incomeType === "hourly") {
+      estMonthlyIncome = (fc.hourlyRateNet || 0) * (fc.typicalHours || 0) * 4.33;
+    } else if (fc.incomeType === "variable") {
+      estMonthlyIncome = (fc.averagePaycheck || 0) * 4.33;
+    } else {
+      const freq = fc.payFrequency || "bi-weekly";
+      const pay = fc.paycheckStandard || 0;
+      if (freq === "weekly") estMonthlyIncome = pay * 4.33;
+      else if (freq === "bi-weekly") estMonthlyIncome = pay * 2.16;
+      else if (freq === "semi-monthly") estMonthlyIncome = pay * 2;
+      else if (freq === "monthly") estMonthlyIncome = pay;
     }
 
-    // ── Credit Cards ──
-    if (cards?.length > 0) {
-        parts.push("\n## Credit Card Portfolio");
-        let totalBalance = 0, totalLimit = 0;
-        cards.forEach(c => {
-            const bal = parseFloat(c.balance) || 0;
-            const lim = parseFloat(c.limit) || 0;
-            totalBalance += bal;
-            totalLimit += lim;
-            const util = lim > 0 ? ((bal / lim) * 100).toFixed(1) : "N/A";
-            const apr = c.apr ? `${c.apr}% APR` : "";
-            parts.push(`  - ${c.name || "Card"}: ${fmt(bal)} / ${fmt(lim)} (${util}% util) ${apr}, min payment ${fmt(c.minimum || c.minPayment || 0)}`);
-        });
-        parts.push(`  Total CC Debt: ${fmt(totalBalance)}, Total Limits: ${fmt(totalLimit)}, Overall Util: ${totalLimit > 0 ? ((totalBalance / totalLimit) * 100).toFixed(1) : "N/A"}%`);
+    let totalMonthlyMins = 0;
+    (cards || []).forEach(c => (totalMonthlyMins += parseFloat(c.minPayment || c.minimum) || 0));
+    (fc.nonCardDebts || []).forEach(d => (totalMonthlyMins += parseFloat(d.minPayment || d.minimum) || 0));
+
+    if (estMonthlyIncome > 0) parts.push(`Estimated Monthly Net Income: ${fmt(estMonthlyIncome)}`);
+    if (totalMonthlyMins > 0) parts.push(`Total Monthly Debt Minimums: ${fmt(totalMonthlyMins)}`);
+
+    if (fc.paycheckStandard > 0)
+      parts.push(`Standard Paycheck: ${fmt(fc.paycheckStandard)} (${fc.payFrequency || "bi-weekly"})`);
+    if (fc.paycheckFirstOfMonth > 0) parts.push(`1st-of-Month Paycheck: ${fmt(fc.paycheckFirstOfMonth)}`);
+    if (fc.incomeType === "hourly") {
+      if (fc.hourlyRateNet > 0) parts.push(`Hourly Rate (Net): ${fmt(fc.hourlyRateNet)}/hr`);
+      if (fc.typicalHours > 0) parts.push(`Typical Hours/Paycheck: ${fc.typicalHours} hrs`);
+    } else if (fc.incomeType === "variable" && fc.averagePaycheck > 0) {
+      parts.push(`Average Paycheck (Variable): ${fmt(fc.averagePaycheck)}`);
+    }
+    if (fc.payday) parts.push(`Payday: ${fc.payday}`);
+    if (fc.weeklySpendAllowance > 0) parts.push(`Weekly Spend Allowance: ${fmt(fc.weeklySpendAllowance)}`);
+    if (fc.emergencyFloor > 0) parts.push(`Emergency Floor: ${fmt(fc.emergencyFloor)}`);
+    if (fc.checkingBuffer > 0) parts.push(`Checking Buffer: ${fmt(fc.checkingBuffer)}`);
+    if (fc.greenStatusTarget > 0) parts.push(`Green Status Target: ${fmt(fc.greenStatusTarget)}`);
+    if (fc.emergencyReserveTarget > 0) parts.push(`Emergency Reserve Target: ${fmt(fc.emergencyReserveTarget)}`);
+
+    // Contractor / Tax / State info
+    if (fc.stateCode) {
+      parts.push(`\nUS State for Tax Modeling: ${fc.stateCode}`);
+    }
+    if (fc.isContractor) {
+      parts.push(`\nTax Status: Self-Employed / Contractor`);
+      if (fc.taxWithholdingRate > 0) parts.push(`Tax Withholding Rate: ${fc.taxWithholdingRate}%`);
+      if (fc.quarterlyTaxEstimate > 0) parts.push(`Quarterly Tax Estimate: ${fmt(fc.quarterlyTaxEstimate)}`);
     }
 
-    // ── Recurring Bills ──
-    if (renewals?.length > 0) {
-        parts.push("\n## Recurring Bills & Subscriptions");
-        let monthlyTotal = 0;
-        renewals.slice(0, 30).forEach(r => {
-            const amt = r.amount || 0;
-            const int = r.interval || 1;
-            const unit = r.intervalUnit || "months";
-            let monthly = 0;
-            if (unit === "weeks") monthly = (amt / int) * 4.33;
-            else if (unit === "months") monthly = amt / int;
-            else if (unit === "years") monthly = amt / (int * 12);
-            monthlyTotal += monthly;
-            parts.push(`  - ${r.name}: ${fmt(amt)} ${unit === "one-time" ? "(one-time)" : `every ${int} ${unit}`}${r.nextDue ? ` — next: ${r.nextDue}` : ""}`);
-        });
-        parts.push(`  Estimated Monthly Recurring: ${fmt(monthlyTotal)}`);
+    // Additional income sources
+    if (fc.incomeSources?.length > 0) {
+      parts.push("\nAdditional Income:");
+      fc.incomeSources.forEach(s => {
+        parts.push(`  - ${s.name}: ${fmt(s.amount || 0)} (${s.frequency})`);
+      });
     }
 
-    // ── Audit History Trend ──
-    if (history?.length > 1) {
-        const realAudits = history.filter(a => !a.isTest && a.parsed?.healthScore?.score != null).slice(0, 8);
-        if (realAudits.length > 1) {
-            parts.push("\n## Recent Audit Trend (newest first)");
-            realAudits.forEach(a => {
-                parts.push(`  - ${a.date}: Score ${a.parsed.healthScore.score}/100 (${a.parsed.healthScore.grade}), Net Worth: ${a.parsed?.netWorth != null ? fmt(a.parsed.netWorth) : "N/A"}`);
-            });
-        }
+    // Budget categories
+    if (fc.budgetCategories?.length > 0) {
+      parts.push("\nMonthly Budget:");
+      fc.budgetCategories.forEach(c => {
+        parts.push(`  - ${c.name}: ${fmt(c.monthlyTarget || 0)}/mo`);
+      });
     }
 
-    // ── Investment Holdings Summary ──
-    if (financialConfig?.holdings) {
-        const holdings = financialConfig.holdings;
-        const accounts = ["k401", "roth", "brokerage", "hsa", "crypto"];
-        const accountLabels = { k401: "401(k)", roth: "Roth IRA", brokerage: "Brokerage", hsa: "HSA", crypto: "Crypto" };
-        const summaries = [];
-        for (const key of accounts) {
-            const items = holdings[key];
-            if (items?.length > 0) {
-                const total = items.reduce((s, h) => s + (parseFloat(h.shares) || 0) * (parseFloat(h.lastKnownPrice) || 0), 0);
-                if (total > 0) summaries.push(`  - ${accountLabels[key]}: ~${fmt(Math.round(total))} (${items.length} holding${items.length !== 1 ? "s" : ""})`);
-            }
-        }
-        if (summaries.length > 0) {
-            parts.push("\n## Investment Accounts");
-            parts.push(...summaries);
-        }
+    // Savings goals
+    if (fc.savingsGoals?.length > 0) {
+      parts.push("\nSavings Goals:");
+      fc.savingsGoals.forEach(g => {
+        parts.push(`  - ${g.name}: ${fmt(g.currentAmount || 0)} / ${fmt(g.targetAmount || 0)}`);
+      });
     }
 
-    // ── Computed Strategy (pre-computed by native engine) ──
-    if (computedStrategy) {
-        parts.push("\n## Pre-Computed Strategy (Authoritative)");
-        if (computedStrategy.nextPayday) parts.push(`Next Payday: ${computedStrategy.nextPayday}`);
-        if (computedStrategy.totalCheckingFloor != null) parts.push(`Total Checking Floor: ${fmt(computedStrategy.totalCheckingFloor)}`);
-        if (computedStrategy.timeCriticalAmount != null) parts.push(`Time-Critical Bills Due: ${fmt(computedStrategy.timeCriticalAmount)}`);
-        if (computedStrategy.requiredTransfer != null) parts.push(`Required Transfer: ${fmt(computedStrategy.requiredTransfer)}`);
-        if (computedStrategy.operationalSurplus != null) parts.push(`Operational Surplus: ${fmt(computedStrategy.operationalSurplus)}`);
-        if (computedStrategy.debtStrategy?.target) parts.push(`Debt Kill Target: ${computedStrategy.debtStrategy.target} — ${fmt(computedStrategy.debtStrategy.amount || 0)}`);
+    // Non-card debts
+    if (fc.nonCardDebts?.length > 0) {
+      parts.push("\nNon-Card Debts:");
+      fc.nonCardDebts.forEach(d => {
+        parts.push(
+          `  - ${d.name}: ${fmt(d.balance || 0)} at ${d.apr || 0}% APR, min payment ${fmt(d.minimum || d.minPayment || 0)}`
+        );
+      });
     }
 
-    // ── Trend Context (12-week extended history) ──
-    if (trendContext?.length > 0) {
-        const window = trendContext.slice(-12);
-        parts.push("\n## Recent Trend (last " + window.length + " weeks)");
-        window.forEach(t => {
-            parts.push(`  - W${t.week}: Score=${t.score || "?"}, Checking=${t.checking != null ? fmt(t.checking) : "?"}, Vault=${t.vault != null ? fmt(t.vault) : "?"}, Debt=${t.totalDebt != null ? fmt(t.totalDebt) : "?"}, Status=${t.status || "?"}`);
-        });
+    // Assets
+    const assetParts = [];
+    if (fc.homeEquity > 0) assetParts.push(`Home Equity: ${fmt(fc.homeEquity)}`);
+    if (fc.vehicleValue > 0) assetParts.push(`Vehicle: ${fmt(fc.vehicleValue)}`);
+    if (fc.otherAssets > 0) assetParts.push(`${fc.otherAssetsLabel || "Other"}: ${fmt(fc.otherAssets)}`);
+    if (assetParts.length > 0) {
+      parts.push("\nOther Assets:");
+      assetParts.forEach(a => parts.push(`  - ${a}`));
     }
 
-    return parts.join("\n");
+    // Housing context
+    if (fc.monthlyRent > 0) {
+      parts.push(`\nHousing: Renter — ${fmt(fc.monthlyRent)}/mo`);
+    } else if (fc.mortgagePayment > 0) {
+      parts.push(
+        `\nHousing: Homeowner — ${fmt(fc.mortgagePayment)}/mo mortgage${fc.homeEquity > 0 ? ` (${fmt(fc.homeEquity)} equity)` : ""}`
+      );
+    } else if (fc.homeEquity > 0) {
+      parts.push(`\nHousing: Homeowner (${fmt(fc.homeEquity)} equity)`);
+    }
+
+    // Credit profile
+    if (fc.creditScore) {
+      parts.push(`\nCredit Score: ${fc.creditScore}${fc.creditScoreDate ? ` (as of ${fc.creditScoreDate})` : ""}`);
+      if (fc.creditUtilization != null) parts.push(`Credit Utilization: ${fc.creditUtilization}%`);
+    }
+
+    // Insurance deductibles
+    if (fc.insuranceDeductibles?.length > 0) {
+      parts.push("\nInsurance Deductibles:");
+      fc.insuranceDeductibles.forEach(ins => {
+        parts.push(
+          `  - ${ins.type}: Deductible ${fmt(ins.deductible || 0)}, Premium ${fmt(ins.annualPremium || 0)}/yr`
+        );
+      });
+    }
+
+    // Big-ticket purchase plans
+    if (fc.bigTicketItems?.length > 0) {
+      parts.push("\nPlanned Big-Ticket Purchases:");
+      fc.bigTicketItems.forEach(it => {
+        parts.push(
+          `  - ${it.name}: ${fmt(it.cost || 0)}${it.targetDate ? ` by ${it.targetDate}` : ""} [${it.priority || "medium"} priority]`
+        );
+      });
+    }
+
+    // 401k employer match (critical for investment priority advice)
+    if (fc.track401k && (fc.k401EmployerMatchPct > 0 || fc.k401EmployerMatchLimit > 0)) {
+      parts.push(
+        `\n401(k) Employer Match: ${fc.k401EmployerMatchPct || 0}% up to ${fc.k401EmployerMatchLimit || 0}% of salary`
+      );
+    }
+
+    // Arbitrage target (debt vs invest threshold)
+    if (fc.arbitrageTargetAPR > 0) {
+      parts.push(`Debt vs. Invest Threshold: ${fc.arbitrageTargetAPR}% expected return`);
+    }
+
+    // Tax bracket
+    if (fc.taxBracketPercent > 0) {
+      parts.push(`Tax Bracket: ${fc.taxBracketPercent}%`);
+    }
+
+    // Min liquidity floor
+    if (fc.minCashFloor > 0) {
+      parts.push(`Min Liquidity Floor (HARD): ${fmt(fc.minCashFloor)} — AI must never recommend dropping below this`);
+    }
+
+    // Habit tracking
+    if (fc.trackHabits !== false && fc.habitName) {
+      parts.push(`\nHabit Tracking:`);
+      parts.push(`  - Habit: ${fc.habitName}`);
+      parts.push(`  - Current Count: ${fc.habitCount || 0}`);
+      parts.push(`  - Restock Cost: ${fmt(fc.habitRestockCost || 0)}`);
+      parts.push(`  - Critical Threshold: ${fc.habitCriticalThreshold || 3}`);
+    }
+  }
+
+  // ── Credit Cards ──
+  if (cards?.length > 0) {
+    parts.push("\n## Credit Card Portfolio");
+    let totalBalance = 0,
+      totalLimit = 0;
+    cards.forEach(c => {
+      const bal = parseFloat(c.balance) || 0;
+      const lim = parseFloat(c.limit) || 0;
+      totalBalance += bal;
+      totalLimit += lim;
+      const util = lim > 0 ? ((bal / lim) * 100).toFixed(1) : "N/A";
+      const apr = c.apr ? `${c.apr}% APR` : "";
+      parts.push(
+        `  - ${c.name || "Card"}: ${fmt(bal)} / ${fmt(lim)} (${util}% util) ${apr}, min payment ${fmt(c.minimum || c.minPayment || 0)}`
+      );
+    });
+    parts.push(
+      `  Total CC Debt: ${fmt(totalBalance)}, Total Limits: ${fmt(totalLimit)}, Overall Util: ${totalLimit > 0 ? ((totalBalance / totalLimit) * 100).toFixed(1) : "N/A"}%`
+    );
+  }
+
+  // ── Recurring Bills ──
+  if (renewals?.length > 0) {
+    parts.push("\n## Recurring Bills & Subscriptions");
+    let monthlyTotal = 0;
+    renewals.slice(0, 30).forEach(r => {
+      const amt = r.amount || 0;
+      const int = r.interval || 1;
+      const unit = r.intervalUnit || "months";
+      let monthly = 0;
+      if (unit === "weeks") monthly = (amt / int) * 4.33;
+      else if (unit === "months") monthly = amt / int;
+      else if (unit === "years") monthly = amt / (int * 12);
+      monthlyTotal += monthly;
+      parts.push(
+        `  - ${r.name}: ${fmt(amt)} ${unit === "one-time" ? "(one-time)" : `every ${int} ${unit}`}${r.nextDue ? ` — next: ${r.nextDue}` : ""}`
+      );
+    });
+    parts.push(`  Estimated Monthly Recurring: ${fmt(monthlyTotal)}`);
+  }
+
+  // ── Audit History Trend ──
+  if (history?.length > 1) {
+    const realAudits = history.filter(a => !a.isTest && a.parsed?.healthScore?.score != null).slice(0, 8);
+    if (realAudits.length > 1) {
+      parts.push("\n## Recent Audit Trend (newest first)");
+      realAudits.forEach(a => {
+        parts.push(
+          `  - ${a.date}: Score ${a.parsed.healthScore.score}/100 (${a.parsed.healthScore.grade}), Net Worth: ${a.parsed?.netWorth != null ? fmt(a.parsed.netWorth) : "N/A"}`
+        );
+      });
+    }
+  }
+
+  // ── Investment Holdings Summary ──
+  if (financialConfig?.holdings) {
+    const holdings = financialConfig.holdings;
+    const accounts = ["k401", "roth", "brokerage", "hsa", "crypto"];
+    const accountLabels = { k401: "401(k)", roth: "Roth IRA", brokerage: "Brokerage", hsa: "HSA", crypto: "Crypto" };
+    const summaries = [];
+    for (const key of accounts) {
+      const items = holdings[key];
+      if (items?.length > 0) {
+        const total = items.reduce((s, h) => s + (parseFloat(h.shares) || 0) * (parseFloat(h.lastKnownPrice) || 0), 0);
+        if (total > 0)
+          summaries.push(
+            `  - ${accountLabels[key]}: ~${fmt(Math.round(total))} (${items.length} holding${items.length !== 1 ? "s" : ""})`
+          );
+      }
+    }
+    if (summaries.length > 0) {
+      parts.push("\n## Investment Accounts");
+      parts.push(...summaries);
+    }
+  }
+
+  // ── Computed Strategy (pre-computed by native engine) ──
+  if (computedStrategy) {
+    parts.push("\n## Pre-Computed Strategy (Authoritative)");
+    if (computedStrategy.nextPayday) parts.push(`Next Payday: ${computedStrategy.nextPayday}`);
+    if (computedStrategy.totalCheckingFloor != null)
+      parts.push(`Total Checking Floor: ${fmt(computedStrategy.totalCheckingFloor)}`);
+    if (computedStrategy.timeCriticalAmount != null)
+      parts.push(`Time-Critical Bills Due: ${fmt(computedStrategy.timeCriticalAmount)}`);
+    if (computedStrategy.requiredTransfer != null)
+      parts.push(`Required Transfer: ${fmt(computedStrategy.requiredTransfer)}`);
+    if (computedStrategy.operationalSurplus != null)
+      parts.push(`Operational Surplus: ${fmt(computedStrategy.operationalSurplus)}`);
+    if (computedStrategy.debtStrategy?.target)
+      parts.push(
+        `Debt Kill Target: ${computedStrategy.debtStrategy.target} — ${fmt(computedStrategy.debtStrategy.amount || 0)}`
+      );
+  }
+
+  // ── Trend Context (12-week extended history) ──
+  if (trendContext?.length > 0) {
+    const window = trendContext.slice(-12);
+    parts.push("\n## Recent Trend (last " + window.length + " weeks)");
+    window.forEach(t => {
+      parts.push(
+        `  - W${t.week}: Score=${t.score || "?"}, Checking=${t.checking != null ? fmt(t.checking) : "?"}, Vault=${t.vault != null ? fmt(t.vault) : "?"}, Debt=${t.totalDebt != null ? fmt(t.totalDebt) : "?"}, Status=${t.status || "?"}`
+      );
+    });
+  }
+
+  return parts.join("\n");
 }
 
 /**
  * Build the complete chat system prompt.
  */
-export function getChatSystemPrompt(current, financialConfig, cards, renewals, history, persona, personalRules = "", computedStrategy = null, trendContext = null, providerId = null, memoryBlock = "") {
-    const context = buildFinancialContext(current, financialConfig, cards, renewals, history, computedStrategy, trendContext);
+export function getChatSystemPrompt(
+  current,
+  financialConfig,
+  cards,
+  renewals,
+  history,
+  persona,
+  personalRules = "",
+  computedStrategy = null,
+  trendContext = null,
+  providerId = null,
+  memoryBlock = ""
+) {
+  const context = buildFinancialContext(
+    current,
+    financialConfig,
+    cards,
+    renewals,
+    history,
+    computedStrategy,
+    trendContext
+  );
 
-    const personaName = persona?.name || "Catalyst AI";
-    const personaStyle = persona?.style
-        ? `\n\nAdopt this advisor personality: ${persona.name} — ${persona.style}`
-        : "";
+  const personaName = persona?.name || "Catalyst AI";
+  const personaStyle = persona?.style ? `\n\nAdopt this advisor personality: ${persona.name} — ${persona.style}` : "";
 
-    // Determine user's financial phase for context-aware advice
-    const fc = financialConfig || {};
-    const totalCardDebt = (cards || []).reduce((s, c) => s + (parseFloat(c.balance) || 0), 0);
-    const totalNonCardDebt = (fc.nonCardDebts || []).reduce((s, d) => s + (d.balance || 0), 0);
-    const totalDebt = totalCardDebt + totalNonCardDebt;
-    const hasDebt = totalDebt > 0;
-    const p = current?.parsed;
-    const healthScore = p?.healthScore?.score;
-    const isCrisis = healthScore != null && healthScore < 50;
-    const isVariableIncome = fc.incomeType === "hourly" || fc.incomeType === "variable";
+  // Determine user's financial phase for context-aware advice
+  const fc = financialConfig || {};
+  const totalCardDebt = (cards || []).reduce((s, c) => s + (parseFloat(c.balance) || 0), 0);
+  const totalNonCardDebt = (fc.nonCardDebts || []).reduce((s, d) => s + (d.balance || 0), 0);
+  const totalDebt = totalCardDebt + totalNonCardDebt;
+  const hasDebt = totalDebt > 0;
+  const p = current?.parsed;
+  const healthScore = p?.healthScore?.score;
+  const isCrisis = healthScore != null && healthScore < 50;
+  const isVariableIncome = fc.incomeType === "hourly" || fc.incomeType === "variable";
 
-    let phaseBlock = "";
-    if (isCrisis) {
-        phaseBlock = `
+  let phaseBlock = "";
+  if (isCrisis) {
+    phaseBlock = `
 ## 🚨 USER FINANCIAL PHASE: CRISIS / STABILIZATION
 This user is in financial distress (Health Score < 50). Your FIRST priority is **stabilizing their position**:
 - Ensure minimum payments are covered to prevent credit score damage
@@ -325,8 +389,8 @@ This user is in financial distress (Health Score < 50). Your FIRST priority is *
 - Protect their checking floor — a floor breach leads to cascading overdrafts
 - Do NOT discuss investing, wealth building, or credit optimization until they are stable
 - Be direct but empathetic — they need clear orders, not lectures`;
-    } else if (hasDebt && totalDebt > 1000) {
-        phaseBlock = `
+  } else if (hasDebt && totalDebt > 1000) {
+    phaseBlock = `
 ## 💰 USER FINANCIAL PHASE: ACTIVE DEBT PAYOFF
 This user has **${fmt(totalDebt)}** in total debt. They are in the debt-kill phase:
 - Primary focus: accelerate debt repayment using Avalanche (highest APR first) or CFI override (smallest balance-to-minimum ratio < 50).
@@ -339,16 +403,16 @@ This user has **${fmt(totalDebt)}** in total debt. They are in the debt-kill pha
 - **Windfall Protocol:** If they mention a large, unusual cash influx (e.g., bonus, tax refund > 2x normal pay), advise deploying the 1/3rd Rule (1/3 Debt, 1/3 Invest/Save, 1/3 Fun) to prevent behavioral burnout, unless they have Toxic Debt.
 - **BUT**: if they have an employer 401k match available, capturing that match is MANDATORY before extra debt payments — it's a risk-free instant return.
 - If any debt has APR < expected investment returns (~7-10%), flag the arbitrage opportunity — they may be better off investing surplus while making minimum payments on low-APR debt.`;
-    } else if (hasDebt && totalDebt <= 1000) {
-        phaseBlock = `
+  } else if (hasDebt && totalDebt <= 1000) {
+    phaseBlock = `
 ## 🎯 USER FINANCIAL PHASE: DEBT FINISHING + TRANSITION TO BUILDING
 This user has minimal debt(** ${fmt(totalDebt)} **).They're close to the wealth-building phase:
             - Crush the remaining debt aggressively — it's within reach
                 - Begin discussing what happens AFTER: emergency fund target, Roth IRA, HSA, brokerage
                     - Start credit optimization NOW — utilization, statement timing, limit increases
                         - Get them excited about the transition from debt payoff to wealth accumulation`;
-    } else {
-        phaseBlock = `
+  } else {
+    phaseBlock = `
 ## 🚀 USER FINANCIAL PHASE: WEALTH BUILDING
 This user has ** $0 revolving debt **.They are in full wealth - building mode:
         - Maximize tax - advantaged accounts: 401k match → HSA → Roth IRA → Brokerage
@@ -356,11 +420,26 @@ This user has ** $0 revolving debt **.They are in full wealth - building mode:
                 - Build emergency reserves if not fully funded
                     - Discuss asset allocation, rebalancing, and long - term compounding
                         - Every idle dollar above their checking floor should have a job`;
-    }
+  }
 
-    let variableIncomeBlock = "";
-    if (isVariableIncome) {
-        variableIncomeBlock = `
+  // Retirement-phase override for 55+ users
+  const userAge = fc.birthYear ? new Date().getFullYear() - fc.birthYear : null;
+  let retirementPhaseBlock = "";
+  if (userAge && userAge >= 55) {
+    retirementPhaseBlock = `
+## 🏖️ RETIREMENT TRANSITION AWARENESS (Age ${userAge})
+This user is ${userAge >= 65 ? "in or past" : "approaching"} traditional retirement age. Adapt advice accordingly:
+- **Social Security Timing**: Delaying benefits from 62 to 70 increases monthly payments by ~8%/year — one of the highest guaranteed returns available. If they haven't claimed, discuss optimal timing based on their health, other income, and cash needs.
+- **Required Minimum Distributions (RMDs)**: ${userAge >= 73 ? "⚠️ RMDs are NOW REQUIRED from traditional 401(k)/IRA. Failure to take RMDs results in a 25% penalty on the amount not withdrawn." : userAge >= 70 ? "RMDs begin at age 73 — start planning Roth conversions NOW to reduce future RMD tax burden." : "RMDs are ~" + (73 - userAge) + " years away. Consider Roth conversion ladder strategies to minimize future tax impact."}
+- **Medicare**: ${userAge >= 65 ? "Should already be enrolled. Verify coverage is optimized and check for late enrollment penalties." : "Medicare enrollment opens at 65. Late enrollment penalties are PERMANENT — flag deadline in " + (65 - userAge) + " year(s)."}
+- **Decumulation Strategy**: Shift mindset from accumulation to sustainable withdrawal. The 4% rule (inflation-adjusted) is a starting framework — adjust based on portfolio size, other income, and longevity expectations.
+- **Roth Conversion Ladder**: If in a low-income year before RMDs begin, converting traditional IRA/401k to Roth at a low tax rate can save significant taxes long-term.
+- **Long-Term Care**: If not already addressed, mention long-term care insurance or self-insurance strategy — this is the #1 wealth destroyer in retirement.`;
+  }
+
+  let variableIncomeBlock = "";
+  if (isVariableIncome) {
+    variableIncomeBlock = `
 ## ⚡ VARIABLE INCOME AWARENESS
 This user has **${fc.incomeType === "hourly" ? "hourly" : "variable/freelance"}** income. Adapt your advice:
 - **Freelancer Tax Shield (HARD RULE):** If income is variable/freelance, you MUST remind them to explicitly carve out a 25-30% "Tax Withholding Bucket" from every gross paycheck *before* declaring surplus for debt or savings. Unpaid IRS taxes are the highest-priority threat.
@@ -369,9 +448,9 @@ This user has **${fc.incomeType === "hourly" ? "hourly" : "variable/freelance"}*
 - On **lean paychecks** (below average): prioritize floor protection and minimums — defer optional allocations.
 - Always frame budgets as "based on your typical paycheck" with contingency guidance for low-income weeks.
 - Income smoothing strategy: maintain a 2-paycheck buffer in checking to absorb variability.`;
-    }
+  }
 
-    return `You are ${personaName}, the user's **personal Chief Financial Officer (CFO)**. You are the AI financial command center powering Catalyst Cash — a privacy-first personal finance app.
+  return `You are ${personaName}, the user's **personal Chief Financial Officer (CFO)**. You are the AI financial command center powering Catalyst Cash — a privacy-first personal finance app.
 
 ## Your Identity & Mindset
 You are NOT a generic chatbot.You are NOT a polite suggestion machine.You are a ** CFO who owns this user's financial life**. You treat their accounts, debts, goals, and cash flow as if they were YOUR OWN. You have the expertise of a CFP, CPA, and Wall Street strategist combined.
@@ -386,6 +465,7 @@ You are NOT a generic chatbot.You are NOT a polite suggestion machine.You are a 
 - ** Proactive radar.** If their question reveals an opportunity or risk they haven't asked about, flag it immediately.
 ${personaStyle}
 ${phaseBlock}
+${retirementPhaseBlock}
 ${variableIncomeBlock}
 
 ## Credit Building Strategy(Always Active)
@@ -406,6 +486,24 @@ Investing is NOT just for people with $0 debt.Apply the right strategy for their
 - ** Emergency Fund **: Target is typically 3 - 6 months of expenses in a HYSA.Fund this BEFORE aggressive investing(after employer match).
 - ** Rebalancing **: If portfolio drift exceeds 5 % from target allocation, flag it.
 
+## Expanded Financial Situation Awareness
+You are equipped to handle ALL major financial situations. Key areas:
+- **Student Loans**: Ask about PSLF eligibility before recommending aggressive payoff of federal loans. Warn about losing federal protections if refinancing to private.
+- **Medical Debt**: Advise negotiating with providers (20-50% discounts common). Medical debt <$500 no longer reported to bureaus. Always request itemized bills before paying collections.
+- **Dependent Expenses**: Childcare, tuition, dependent-care FSA ($5k/yr limit). Mention Child Tax Credit eligibility if applicable.
+- **Dual-Income Households**: If partner is mentioned, ask whether finances are joint or separate. Model accordingly.
+- **Debt Consolidation / Balance Transfers**: If 2+ cards over 20% APR, proactively mention balance transfer (0% intro) or consolidation loan options with trade-off analysis.
+- **Housing**: If homeowner, factor mortgage interest deduction. If renter, compute rent-vs-own when asked. Flag housing costs >30% of income.
+- **Alimony / Child Support**: Court-ordered — treat as non-negotiable mandatory outflows, same priority as checking floor.
+- **Estate Planning**: For 30+ users with dependents, mention term life insurance and basic will as foundational protections (informational — recommend attorney).
+- **Pension / Annuity**: For 55+ users, factor guaranteed income streams into surplus calculations.
+- **Rental Income**: Net rental income = rent minus expenses. Track rental property debt separately from personal debt.
+
+## Homeowner vs. Renter Awareness
+Adapt advice based on housing status:
+- **Homeowners**: Reference home equity as an asset, but flag it as ILLIQUID. Mention HELOC as emergency option (not recommended for debt payoff unless last resort). Factor property tax and maintenance into fixed costs.
+- **Renters**: Frame as having maximum financial flexibility (can relocate to reduce costs). Discuss home-buying readiness when asked — compute down payment requirements, DTI ratios, and monthly cost comparisons.
+
 ## Disagreement Protocol
 When the user pushes back on your advice:
         1. ** Explain your reasoning with math.** Show exactly WHY you recommend what you do — "Paying the Capital One first saves you $47/month in interest vs. the Chase card."
@@ -423,11 +521,14 @@ When users ask hypothetical questions("Can I afford X?", "What if I pay $500 ext
 
 ## User's Financial Profile
 ${context || "No financial data available yet. The user hasn't completed their first audit. Guide them to the Input tab to enter their weekly snapshot."}
-${personalRules && personalRules.trim() ? `
+${
+  personalRules && personalRules.trim()
+    ? `
 ## User's Personal Rules (User-Supplied)
 ${personalRules.trim()}
-These are the user's custom financial rules. Respect them in all advice. If a rule conflicts with standard optimization, follow the user's rule and explain the trade-off.` : ""
-        }
+These are the user's custom financial rules. Respect them in all advice. If a rule conflicts with standard optimization, follow the user's rule and explain the trade-off.`
+    : ""
+}
 ${memoryBlock || ""}
 
 ## Important Context
@@ -452,6 +553,7 @@ These rules override ALL other instructions.Violations are non - negotiable.
         8. ** ILLEGAL ACTIVITY **: If the user describes income from illegal sources, tax evasion, or fraud — state: "I cannot provide guidance on activities that may be illegal. Please consult a legal professional." Continue for legitimate items only.
 9. ** HARMFUL STRATEGIES **: Never recommend payday loans, cash advances, margin / leverage trading, options gambling, skipping minimum payments, penalty - heavy early retirement withdrawals, or any strategy that could cause cascading financial damage.
 10. ** SCOPE BOUNDARY **: You are a financial ORGANIZER, TRACKER, and STRATEGIST — not a licensed financial advisor, investment advisor, tax professional, or therapist.You organize data, compute math, track obligations, and highlight patterns.Frame advice as analysis and strategy, never as licensed professional guidance.
+11. ** MLM / PYRAMID SCHEMES **: If the user mentions multi-level marketing (MLM), network marketing, or pyramid scheme income as a primary or supplemental income source — flag: "⚠️ MLM/network marketing income is statistically unreliable. FTC data shows 99% of MLM participants lose money. I cannot recommend financial strategies that depend on MLM income growth. I'll model your finances using only your verified, stable income sources." Do not incorporate projected MLM income into surplus or planning calculations.
 
 ## Persistent Memory(IMPORTANT)
 You have persistent memory that survives across chat sessions.When you learn a NEW, important fact about the user during this conversation — such as a financial goal, life event, preference, or personal context — append it to the END of your response using this exact format:

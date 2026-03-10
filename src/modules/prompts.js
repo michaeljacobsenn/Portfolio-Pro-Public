@@ -11,19 +11,32 @@ export const getSystemPromptCore = (config, cards = [], renewals = [], personalR
   const cSym = config?.currencyCode ? getCurrency(config.currencyCode).symbol : "$";
 
   // Budget categories
-  const budgetData = config?.budgetCategories?.length > 0
-    ? config.budgetCategories.map(c => `  - ${c.name}: ${cSym}${(c.monthlyTarget || 0).toFixed(2)}/month`).join('\n')
-    : null;
+  const budgetData =
+    config?.budgetCategories?.length > 0
+      ? config.budgetCategories.map(c => `  - ${c.name}: ${cSym}${(c.monthlyTarget || 0).toFixed(2)}/month`).join("\n")
+      : null;
 
   // Non-card debts
-  const debtData = config?.nonCardDebts?.length > 0
-    ? config.nonCardDebts.map(d => `  - ${d.name} (${d.type}): Balance ${cSym}${(d.balance || 0).toFixed(2)}, Min ${cSym}${(d.minimum || 0).toFixed(2)}/mo, APR ${d.apr || 0}%, Due day ${d.dueDay || 'N/A'}`).join('\n')
-    : null;
+  const debtData =
+    config?.nonCardDebts?.length > 0
+      ? config.nonCardDebts
+          .map(
+            d =>
+              `  - ${d.name} (${d.type}): Balance ${cSym}${(d.balance || 0).toFixed(2)}, Min ${cSym}${(d.minimum || 0).toFixed(2)}/mo, APR ${d.apr || 0}%, Due day ${d.dueDay || "N/A"}`
+          )
+          .join("\n")
+      : null;
 
   // Savings goals
-  const goalsData = config?.savingsGoals?.length > 0
-    ? config.savingsGoals.map(g => `  - ${g.name}: Target ${cSym}${(g.targetAmount || 0).toFixed(2)}, Current ${cSym}${(g.currentAmount || 0).toFixed(2)}${g.targetDate ? `, By ${g.targetDate}` : ''} (${g.targetAmount > 0 ? Math.round((g.currentAmount || 0) / g.targetAmount * 100) : 0}%)`).join('\n')
-    : null;
+  const goalsData =
+    config?.savingsGoals?.length > 0
+      ? config.savingsGoals
+          .map(
+            g =>
+              `  - ${g.name}: Target ${cSym}${(g.targetAmount || 0).toFixed(2)}, Current ${cSym}${(g.currentAmount || 0).toFixed(2)}${g.targetDate ? `, By ${g.targetDate}` : ""} (${g.targetAmount > 0 ? Math.round(((g.currentAmount || 0) / g.targetAmount) * 100) : 0}%)`
+          )
+          .join("\n")
+      : null;
 
   // Income sources & Structure
   const incomeTypeStr = config?.incomeType ? config.incomeType.toUpperCase() : "SALARY";
@@ -38,57 +51,84 @@ export const getSystemPromptCore = (config, cards = [], renewals = [], personalR
   } else {
     incomeDetails.push(`  - Earning Structure: SALARY (Standard Paychecks)`);
     incomeDetails.push(`  - Standard Paycheck: ${cSym}${(config.paycheckStandard || 0).toFixed(2)}`);
-    if (config?.paycheckFirstOfMonth) incomeDetails.push(`  - 1st of Month Paycheck: ${cSym}${(config.paycheckFirstOfMonth || 0).toFixed(2)}`);
+    if (config?.paycheckFirstOfMonth)
+      incomeDetails.push(`  - 1st of Month Paycheck: ${cSym}${(config.paycheckFirstOfMonth || 0).toFixed(2)}`);
   }
 
-  const incomeData = config?.incomeSources?.length > 0
-    ? config.incomeSources.map(s => `  - [Additional] ${s.name}: ${cSym}${(s.amount || 0).toFixed(2)} (${s.frequency})`).join('\n')
-    : null;
+  const incomeData =
+    config?.incomeSources?.length > 0
+      ? config.incomeSources
+          .map(s => `  - [Additional] ${s.name}: ${cSym}${(s.amount || 0).toFixed(2)} (${s.frequency})`)
+          .join("\n")
+      : null;
 
   // Insurance deductibles
-  const insuranceData = config?.insuranceDeductibles?.length > 0
-    ? config.insuranceDeductibles.map(ins => `  - ${ins.type}: Deductible ${cSym}${(ins.deductible || 0).toFixed(2)}, Premium ${cSym}${(ins.annualPremium || 0).toFixed(2)}/yr`).join('\n')
-    : null;
+  const insuranceData =
+    config?.insuranceDeductibles?.length > 0
+      ? config.insuranceDeductibles
+          .map(
+            ins =>
+              `  - ${ins.type}: Deductible ${cSym}${(ins.deductible || 0).toFixed(2)}, Premium ${cSym}${(ins.annualPremium || 0).toFixed(2)}/yr`
+          )
+          .join("\n")
+      : null;
 
   // Big-ticket items
-  const bigTicketData = config?.bigTicketItems?.length > 0
-    ? config.bigTicketItems.map(it => `  - ${it.name}: ${cSym}${(it.cost || 0).toFixed(2)}${it.targetDate ? ` by ${it.targetDate}` : ''} [${it.priority || 'medium'} priority]`).join('\n')
-    : null;
+  const bigTicketData =
+    config?.bigTicketItems?.length > 0
+      ? config.bigTicketItems
+          .map(
+            it =>
+              `  - ${it.name}: ${cSym}${(it.cost || 0).toFixed(2)}${it.targetDate ? ` by ${it.targetDate}` : ""} [${it.priority || "medium"} priority]`
+          )
+          .join("\n")
+      : null;
   const totalCheckingFloor = weeklySpendAllowance + emergencyFloor;
   // Build a string representing the user's live card portfolio
-  const cardData = cards && cards.length > 0
-    ? cards.map(c => {
-      const parts = [`  - ${c.name} (${c.institution})`];
-      if (c.limit != null && !isNaN(c.limit)) parts.push(`Limit ${cSym}${c.limit}`);
-      if (c.apr != null && !isNaN(c.apr)) parts.push(`APR ${c.apr}%`);
-      if (c.hasPromoApr && ((c.promoAprAmount != null && !isNaN(c.promoAprAmount)) || c.promoAprExp)) {
-        const promoAmt = (c.promoAprAmount != null && !isNaN(c.promoAprAmount)) ? `${c.promoAprAmount}%` : "PROMO";
-        const promoExp = c.promoAprExp ? ` exp ${c.promoAprExp}` : "";
-        parts.push(`PROMO APR ${promoAmt}${promoExp}`);
-      }
-      if (c.annualFee != null && !isNaN(c.annualFee) && c.annualFee > 0) {
-        parts.push(`AF ${cSym}${c.annualFee}${c.annualFeeDue ? ` due ${c.annualFeeDue}` : ""}`);
-      }
-      if (c.statementCloseDay != null) parts.push(`Stmt closes day ${c.statementCloseDay}`);
-      if (c.paymentDueDay != null) parts.push(`Pmt due day ${c.paymentDueDay}`);
-      if (c.minPayment != null && !isNaN(c.minPayment) && c.minPayment > 0) parts.push(`Min pmt ${cSym}${c.minPayment}`);
-      return parts.join(", ");
-    }).join('\n')
-    : "  - (No cards mapped in UI)";
+  const cardData =
+    cards && cards.length > 0
+      ? cards
+          .map(c => {
+            const parts = [`  - ${c.name} (${c.institution})`];
+            if (c.limit != null && !isNaN(c.limit)) parts.push(`Limit ${cSym}${c.limit}`);
+            if (c.apr != null && !isNaN(c.apr)) parts.push(`APR ${c.apr}%`);
+            if (c.hasPromoApr && ((c.promoAprAmount != null && !isNaN(c.promoAprAmount)) || c.promoAprExp)) {
+              const promoAmt = c.promoAprAmount != null && !isNaN(c.promoAprAmount) ? `${c.promoAprAmount}%` : "PROMO";
+              const promoExp = c.promoAprExp ? ` exp ${c.promoAprExp}` : "";
+              parts.push(`PROMO APR ${promoAmt}${promoExp}`);
+            }
+            if (c.annualFee != null && !isNaN(c.annualFee) && c.annualFee > 0) {
+              parts.push(`AF ${cSym}${c.annualFee}${c.annualFeeDue ? ` due ${c.annualFeeDue}` : ""}`);
+            }
+            if (c.statementCloseDay != null) parts.push(`Stmt closes day ${c.statementCloseDay}`);
+            if (c.paymentDueDay != null) parts.push(`Pmt due day ${c.paymentDueDay}`);
+            if (c.minPayment != null && !isNaN(c.minPayment) && c.minPayment > 0)
+              parts.push(`Min pmt ${cSym}${c.minPayment}`);
+            return parts.join(", ");
+          })
+          .join("\n")
+      : "  - (No cards mapped in UI)";
 
   // Build a string representing the user's active renewals & sinking funds
-  const renewalData = renewals && renewals.length > 0
-    ? renewals.map(r => `  - [${(r.category || 'subs').toUpperCase()}] ${r.name}: ${cSym}${r.amount} every ${r.interval} ${r.intervalUnit}(s), Due: ${r.nextDue || 'N/A'}, via ${r.chargedTo || 'N/A'}`).join('\n')
-    : "  - (No renewals mapped in UI)";
+  const renewalData =
+    renewals && renewals.length > 0
+      ? renewals
+          .map(
+            r =>
+              `  - [${(r.category || "subs").toUpperCase()}] ${r.name}: ${cSym}${r.amount} every ${r.interval} ${r.intervalUnit}(s), Due: ${r.nextDue || "N/A"}, via ${r.chargedTo || "N/A"}`
+          )
+          .join("\n")
+      : "  - (No renewals mapped in UI)";
 
-  const personalBlock = personalRules && personalRules.trim()
-    ? `========================
+  const personalBlock =
+    personalRules && personalRules.trim()
+      ? `========================
 PERSONAL RULES (USER-SUPPLIED, OPTIONAL)
 ========================
 ${personalRules.trim()}
 ========================
 `
-    : "";
+      : "";
 
   const engineBlock = computedStrategy
     ? `
@@ -101,7 +141,7 @@ The following calculations have been natively pre-computed for you. YOU MUST STR
 - Time-Critical Bills Due (<= Next Payday): ${cSym}${(computedStrategy.timeCriticalAmount || 0).toFixed(2)}
 - Required Ally -> Checking Transfer: ${cSym}${(computedStrategy.requiredTransfer || 0).toFixed(2)}
 - Operational Surplus (After Bills & Floors): ${cSym}${(computedStrategy.operationalSurplus || 0).toFixed(2)}
-${computedStrategy.debtStrategy.target ? `- DEBT KILL OVERRIDE: Route ${cSym}${(computedStrategy.debtStrategy.amount || 0).toFixed(2)} of Operational Surplus to -> ${computedStrategy.debtStrategy.target}` : '- DEBT KILL: No specific native override. Follow standard arbitrage rules if surplus exists.'}
+${computedStrategy.debtStrategy.target ? `- DEBT KILL OVERRIDE: Route ${cSym}${(computedStrategy.debtStrategy.amount || 0).toFixed(2)} of Operational Surplus to -> ${computedStrategy.debtStrategy.target}` : "- DEBT KILL: No specific native override. Follow standard arbitrage rules if surplus exists."}
 </ALGORITHMIC_STRATEGY>
 ========================`
     : "";
@@ -154,49 +194,89 @@ ${cardData}
 
 ACTIVE RENEWALS & BILLS:
 ${renewalData}
-${budgetData ? `
+${
+  budgetData
+    ? `
 MONTHLY BUDGET CATEGORIES:
 ${budgetData}
-` : ''}${debtData ? `
+`
+    : ""
+}${
+  debtData
+    ? `
 NON-CARD DEBTS (Loans / Installments):
 ${debtData}
-` : ''}${goalsData ? `
+`
+    : ""
+}${
+  goalsData
+    ? `
 SAVINGS GOALS:
 ${goalsData}
-` : ''}
+`
+    : ""
+}
 INCOME CONFIGURATION & SOURCES:
-${incomeDetails.join('\n')}${incomeData ? `\n${incomeData}` : ''}
-${config?.creditScore ? `
+${incomeDetails.join("\n")}${incomeData ? `\n${incomeData}` : ""}
+${
+  config?.creditScore
+    ? `
 CREDIT PROFILE:
-  - Score: ${config.creditScore}${config.creditScoreDate ? ` (as of ${config.creditScoreDate})` : ''}
-  - Utilization: ${config.creditUtilization || 'N/A'}%
-` : ''}${config?.stateCode ? `
+  - Score: ${config.creditScore}${config.creditScoreDate ? ` (as of ${config.creditScoreDate})` : ""}
+  - Utilization: ${config.creditUtilization || "N/A"}%
+`
+    : ""
+}${
+  config?.stateCode
+    ? `
 US STATE (FOR TAX MODELING):
   - State: ${config.stateCode}
-` : ''}${config?.birthYear ? `
+`
+    : ""
+}${
+  config?.birthYear
+    ? `
 USER AGE CONTEXT:
   - Birth Year: ${config.birthYear}
   - Current Age: ${new Date().getFullYear() - config.birthYear}
   - Years to Retirement Account Access (59½): ${Math.max(0, Math.round(config.birthYear + 59.5 - new Date().getFullYear()))}
-  - Retirement Account Liquidity Weight: ${(new Date().getFullYear() - config.birthYear) >= 60 ? '100% (fully accessible)' : (new Date().getFullYear() - config.birthYear) >= 55 ? '50% (within 5 years of access)' : '0% (locked — cannot offset current debt)'}
-` : ''}${config?.isContractor ? `
+  - Retirement Account Liquidity Weight: ${(new Date().getFullYear() - config.birthYear) >= 60 ? "100% (fully accessible)" : new Date().getFullYear() - config.birthYear >= 55 ? "50% (within 5 years of access)" : "0% (locked — cannot offset current debt)"}
+`
+    : ""
+}${
+  config?.isContractor
+    ? `
 TAX / SELF-EMPLOYMENT:
   - Withholding Rate: ${config.taxWithholdingRate || 0}%
   - Quarterly Estimate: ${cSym}${(config.quarterlyTaxEstimate || 0).toFixed(2)}
   - Due Dates: Apr 15, Jun 15, Sep 15, Jan 15
-` : ''}${insuranceData ? `
+`
+    : ""
+}${
+  insuranceData
+    ? `
 INSURANCE DEDUCTIBLES:
 ${insuranceData}
-` : ''}${bigTicketData ? `
+`
+    : ""
+}${
+  bigTicketData
+    ? `
 BIG-TICKET PURCHASE PLANS:
 ${bigTicketData}
-` : ''}${config?.trackHabits !== false ? `
+`
+    : ""
+}${
+  config?.trackHabits !== false
+    ? `
 HABIT TRACKING:
-  - Habit: ${config.habitName || 'Habit'}
+  - Habit: ${config.habitName || "Habit"}
   - Current Count: ${config.habitCount || 0} units
   - Restock Cost: ${cSym}${(config.habitRestockCost || 0).toFixed(2)}
   - Critical Threshold: ${config.habitCriticalThreshold || 3}
-` : ''}========================
+`
+    : ""
+}========================
 ${personalBlock}${engineBlock}
 
 INDEX (NON-ENFORCEABLE; POINTERS ONLY)
@@ -256,7 +336,9 @@ I) AMAZON SUBSCRIBE & SAVE (LUMPY CONSUMABLES)
 ========================
 [See LIVE APP DATA appended to snapshot for full Subscribe & Save itemization]
 
-${goalsData ? `
+${
+  goalsData
+    ? `
 ========================
 J) STRATEGIC SINKING FUNDS & ONE-TIME GOALS (VIRTUAL BUCKET TARGETS)
 ========================
@@ -264,16 +346,24 @@ J) STRATEGIC SINKING FUNDS & ONE-TIME GOALS (VIRTUAL BUCKET TARGETS)
 * IMPORTANT: The snapshot will natively tag these as [J-Sinking] and [J-OneTime].
 * Use these figures to calculate ongoing pacing and targets.
 * For Sinking Funds that do not have a hard end-date (e.g. annual gifts), independently compute the weekly necessary pacing (Total / 52) based on the target amount in the LIVE APP DATA.
-` : ''}
+`
+    : ""
+}
 
-${config?.isContractor ? `
+${
+  config?.isContractor
+    ? `
 ========================
 K) TAX SETTLEMENT ESCROW (IF APPLICABLE)
 ========================
 [See LIVE APP DATA and/or PERSONAL RULES for any escrowed tax/refund logic]
-` : ''}
+`
+    : ""
+}
 
-${(cardData !== "  - (No cards mapped in UI)" || debtData) ? `
+${
+  cardData !== "  - (No cards mapped in UI)" || debtData
+    ? `
 ========================
 L) CREDIT & DEBT PORTFOLIO (REFERENCE — DO NOT DELETE)
 ========================
@@ -298,7 +388,9 @@ Promo Deadline Single Source of Truth (HARD):
 - All references to promo deadlines across sections (e.g., N, P, W) must dynamically parse the App Data (e.g., checking the card's \`notes\` for "0% ends [Date]").
 - If a promo date or minimum payment changes, the user adjusts it within the app UI natively, overriding any assumptions.
 - NOTE: \`nextDue\` dates in LIVE APP DATA are USER-CONFIRMED schedule dates. Do NOT re-derive or overwrite them during a run.
-` : ''}
+`
+    : ""
+}
 
 ========================
 M) CLEARING PROTOCOL (REIMBURSEMENTS)
@@ -340,7 +432,7 @@ PromoSprintMode (CONFIG, HARD):
 ========================
 O) STATUS GRADING
 ========================
-GREEN: CheckingProjEnd ≥ \${cSym}${((config?.greenStatusTarget) || 0).toFixed(2)} AND all hard-deadline goals on pace AND no Forward Radar shortfalls
+GREEN: CheckingProjEnd ≥ \${cSym}${(config?.greenStatusTarget || 0).toFixed(2)} AND all hard-deadline goals on pace AND no Forward Radar shortfalls
 YELLOW: CheckingProjEnd \${cSym}${totalCheckingFloor.toFixed(2)}—\${cSym}${Math.max(0, (config.greenStatusTarget || 0) - 0.01).toFixed(2)} OR minor underfunding but recoverable OR Forward Radar shortfall detected but ≥2 paydays to address
 RED: CheckingProjEnd < \${cSym}${totalCheckingFloor.toFixed(2)} OR any hard deadline off-track without catch-up OR min-pay at risk OR Forward Radar shortfall with <2 paydays to address
 
@@ -356,13 +448,21 @@ D) CONFIG (HELPER DEFINITIONS + MODE DEFAULTS)
 - AnchorDate = SnapshotDate if provided; else CurrentDateTimeEST date (Section D clock fallback).
 - NextPayday = next occurrence of ${config.payday} strictly AFTER AnchorDate.
 - IsFirst${config.payday}OfMonth(Date) = TRUE if Date is a ${config.payday} and day-of-month is 1–7 inclusive; else FALSE.
-- PayFrequency = ${config.payFrequency || 'bi-weekly'} (used for PaychecksRemainingInYear calculations).
+- PayFrequency = ${config.payFrequency || "bi-weekly"} (used for PaychecksRemainingInYear calculations).
 - WeeklySpendAllowance = ${cSym}${weeklySpendAllowance.toFixed(2)} (user-configured).
 - CheckingFloor = ${cSym}${emergencyFloor.toFixed(2)} (user-configured goal — minimum checking balance to maintain).
 - TotalCheckingFloor = WeeklySpendAllowance + CheckingFloor = ${cSym}${totalCheckingFloor.toFixed(2)}.
-${minCashFloor !== null ? `- MinLiquidity = ${cSym}${minCashFloor.toFixed(2)} (HARD — AI must NEVER recommend an allocation that drops total liquid cash below this amount, even if all other floors are met).
-` : ''}${taxBracketPercent !== null ? `- TaxBracketPercent = ${taxBracketPercent}% (USER-DEFINED federal bracket for informational post-tax yield math only).
-` : ''}
+${
+  minCashFloor !== null
+    ? `- MinLiquidity = ${cSym}${minCashFloor.toFixed(2)} (HARD — AI must NEVER recommend an allocation that drops total liquid cash below this amount, even if all other floors are met).
+`
+    : ""
+}${
+  taxBracketPercent !== null
+    ? `- TaxBracketPercent = ${taxBracketPercent}% (USER-DEFINED federal bracket for informational post-tax yield math only).
+`
+    : ""
+}
 PAYCHECK POST-TAX RULE (HARD — NO EXCEPTIONS):
 - ALL paycheck amounts entered by the user (PaycheckAddAmount, paycheckFirstOfMonth, paycheckStandard) are ALREADY post-tax and post-withholdings take-home amounts.
 - You MUST NOT deduct taxes, FICA, Social Security, Medicare, or any withholding from these values.
@@ -449,7 +549,7 @@ For any item strictly due BEFORE OR ON NextPayday (≤ 14 days from AnchorDate),
 CRITICAL BOUNDARY: Do NOT prematurely pull items into this gate if they are due > 14 days away.
 - Annual Fees: If any annual fee posts (or is due) before next payday, treat as TIME-CRITICAL.
 - Include any renewals, minimums, or hard deadlines due ≤ NextPayday from LIVE APP DATA and/or PERSONAL RULES.
-${config.trackHabits !== false ? `- If Habit tracking is enabled, apply PERSONAL RULES for any habit-related timing/amount and defer rules.` : ''}
+${config.trackHabits !== false ? `- If Habit tracking is enabled, apply PERSONAL RULES for any habit-related timing/amount and defer rules.` : ""}
 This gate always runs BEFORE vault funding.
 
 Step 3.25: SMART DEFERRAL — HABIT vs FLOOR (HARD)
@@ -552,9 +652,13 @@ WINDFALL PROTOCOL:
 - If PromoSprintMode qualifies per Section N: KillSwitchCard := promo card (override normal Kill Switch selection).
 - Evaluate Quick Kill (Snowball) Override: If RemainingSurplus >= (Balance of any individual smaller debt), KILL THAT DEBT ENTIRELY today, overriding Avalanche. Wiping a debt entirely creates a psychological win and eliminates a minimum payment.
 - Evaluate Credit Utilization Tripwire (HARD): If ANY listed credit card has a known limit AND its (CurrentBalance / Limit) > 0.85, that card is a toxically over-utilized threat to the FICO score. You MUST override Avalanche and route debt kill surplus to this card until its utilization drops below 30%.
-- Evaluate Arbitrage (Invest vs. Debt): Compare the APR of the KillSwitchCard (or highest priority debt) against the EFFECTIVE (after-tax) investment return.${taxBracketPercent != null ? `
-  TAX-ADJUSTED ARBITRAGE: The user's tax bracket is ${taxBracketPercent}%. Effective investment return = ${config.arbitrageTargetAPR || 'N/A'}% × (1 − ${taxBracketPercent / 100}) = ${((config.arbitrageTargetAPR || 0) * (1 - (taxBracketPercent || 0) / 100)).toFixed(2)}%. Compare THIS after-tax number (not the raw ${config.arbitrageTargetAPR || 'N/A'}%) against the debt APR. Paying off debt is an effectively risk-free, tax-free return — investing is not.` : `
-  Arbitrage Target APR: ${config.arbitrageTargetAPR || 'N/A'}% (no tax bracket provided — compare raw rate).`}
+- Evaluate Arbitrage (Invest vs. Debt): Compare the APR of the KillSwitchCard (or highest priority debt) against the EFFECTIVE (after-tax) investment return.${
+    taxBracketPercent != null
+      ? `
+  TAX-ADJUSTED ARBITRAGE: The user's tax bracket is ${taxBracketPercent}%. Effective investment return = ${config.arbitrageTargetAPR || "N/A"}% × (1 − ${taxBracketPercent / 100}) = ${((config.arbitrageTargetAPR || 0) * (1 - (taxBracketPercent || 0) / 100)).toFixed(2)}%. Compare THIS after-tax number (not the raw ${config.arbitrageTargetAPR || "N/A"}%) against the debt APR. Paying off debt is an effectively risk-free, tax-free return — investing is not.`
+      : `
+  Arbitrage Target APR: ${config.arbitrageTargetAPR || "N/A"}% (no tax bracket provided — compare raw rate).`
+  }
   If the debt APR is strictly LESS than the effective investment return, do NOT apply surplus to the debt. Instead, route Checking → KillSwitchCard surplus to "Investments (Brokerage/Roth/HSA)".
 - Evaluate Cash Flow Index (CFI) Override (ELITE DEBT RULE): Before applying the standard highest-APR Avalanche method, mathematically check if a smaller debt balance can be completely obliterated to free up its monthly minimum payment. If (Balance / Minimum Payment) < 50, that debt is a MASSIVE cash-flow drag. Re-route surplus to annihilate this inefficient debt first to instantly increase weekly liquidity, overriding highest-APR.
 - Otherwise, apply standard Debt Kill:
@@ -566,10 +670,14 @@ Sweep Protocol (If Debt = ${cSym}0 or Arbitrage favors investing):
   2. Catch-up on underfunded Sinking Funds with hard deadlines (Vault)
   3. Fund Emergency Reserve to target (Section Y) — if not yet fully funded
   4. Maximize HSA contributions (if eligible — triple-tax-advantaged; use as stealth retirement account after 65)
+  4a. FSA DEADLINE ALERT: If user has a Flexible Spending Account (FSA), remind them of the "use-it-or-lose-it" deadline (typically Dec 31 or Mar 15 grace period). Unspent FSA dollars are forfeited — flag in ALERTS if Q4 and FSA balance is mentioned.
   5. Maximize Roth IRA contributions (if eligible and IRS limit not yet reached for the year)
+  5a. BACKDOOR ROTH (HIGH-INCOME): If user's income exceeds Roth IRA direct contribution limits, mention the backdoor Roth IRA strategy (contribute to Traditional IRA → convert to Roth). This is informational only — recommend consulting a CPA for execution.
+  5b. MEGA-BACKDOOR ROTH: If user's 401k plan allows after-tax contributions with in-plan Roth conversion, mention this as a way to contribute up to ~$69,000/yr total to tax-advantaged accounts. Informational only — recommend verifying plan rules.
   6. Maximize 401k contributions beyond match (up to IRS annual limit)
-  7. Taxable Brokerage investments
-  8. General Opportunity HYSA (Vault) — for short-term goals < 3 years
+  7. 529 Education Savings Plans (if user has children or dependents): State tax deduction in many states + tax-free growth for education expenses. Mention if user has dependents or has mentioned education goals.
+  8. Taxable Brokerage investments
+  9. General Opportunity HYSA (Vault) — for short-term goals < 3 years
 - The NEXT ACTION and WEEKLY MOVES must clearly state where this "Wealth-Building Surplus" is being routed WITH SPECIFIC DOLLAR AMOUNTS. Vague advice ("consider investing") is unacceptable.
 - ARBITRAGE SURFACE RULE (HARD): Even during active debt payoff (Step 6), if any debt has APR < the effective investment return (per arbitrage calculation above), the audit output MUST explicitly note this in ALERTS: "💡 ARBITRAGE: [DebtName] at [APR]% costs less than expected returns of [EffectiveReturn]%. Consider investing surplus instead of accelerating this payoff." Let the user decide — but the information must always be surfaced.
 
@@ -602,7 +710,14 @@ When NO transactions are provided: skip this section entirely. Do NOT fabricate 
 
 IMPORTANT: Transaction data is OBSERVATIONAL — it confirms what has already been spent. Do NOT double-deduct transaction amounts from checking (the checking balance already reflects these charges).
 
-${(config?.trackRoth || config?.track401k || config?.trackBrokerage || config?.trackHSA || config?.trackCrypto || config?.enableHoldings) ? `
+${
+  config?.trackRoth ||
+  config?.track401k ||
+  config?.trackBrokerage ||
+  config?.trackHSA ||
+  config?.trackCrypto ||
+  config?.enableHoldings
+    ? `
 ========================
 S) INVESTMENTS & CRYPTO (REFERENCE — DO NOT DELETE)
 ========================
@@ -610,17 +725,21 @@ Accounts:
 - Personal Brokerage: (See LIVE APP DATA from Snapshot if enabled)
 - Roth IRA: (See LIVE APP DATA from Snapshot if enabled)
 - 401k: (See LIVE APP DATA from Snapshot if enabled)
-${config?.trackHSA ? '- HSA: (See LIVE APP DATA from Snapshot if enabled)' : ''}
+${config?.trackHSA ? "- HSA: (See LIVE APP DATA from Snapshot if enabled)" : ""}
 
 Holdings & Allocations:
-- Roth IRA: ${config?.enableHoldings && config?.holdings?.roth?.length > 0 ? config.holdings.roth.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'} [Target Allocation: ${config.rothStockPct ?? 90}% Stocks / ${100 - (config.rothStockPct ?? 90)}% Bonds]
-- Brokerage Allocation: ${config?.enableHoldings && config?.holdings?.brokerage?.length > 0 ? config.holdings.brokerage.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'} [Allocation: ${config.brokerageStockPct ?? 90}% Stocks / ${100 - (config.brokerageStockPct ?? 90)}% Bonds]
-- 401k Allocation: ${config?.enableHoldings && config?.holdings?.k401?.length > 0 ? config.holdings.k401.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'} [Allocation: ${Number.isFinite(config?.k401StockPct) ? `${config.k401StockPct}% Stocks / ${100 - config.k401StockPct}% Bonds` : '(Follow defaults)'}]
-${config?.trackHSA ? `- HSA: ${config?.enableHoldings && config?.holdings?.hsa?.length > 0 ? config.holdings.hsa.map(h => `${h.shares} shares of ${h.symbol}`).join(', ') : '(No tracked holdings)'}` : ''}
-${(config?.enableHoldings && config?.holdings?.crypto?.length > 0) || (config?.holdings?.crypto?.length > 0) ? `
+- Roth IRA: ${config?.enableHoldings && config?.holdings?.roth?.length > 0 ? config.holdings.roth.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Target Allocation: ${config.rothStockPct ?? 90}% Stocks / ${100 - (config.rothStockPct ?? 90)}% Bonds]
+- Brokerage Allocation: ${config?.enableHoldings && config?.holdings?.brokerage?.length > 0 ? config.holdings.brokerage.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Allocation: ${config.brokerageStockPct ?? 90}% Stocks / ${100 - (config.brokerageStockPct ?? 90)}% Bonds]
+- 401k Allocation: ${config?.enableHoldings && config?.holdings?.k401?.length > 0 ? config.holdings.k401.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Allocation: ${Number.isFinite(config?.k401StockPct) ? `${config.k401StockPct}% Stocks / ${100 - config.k401StockPct}% Bonds` : "(Follow defaults)"}]
+${config?.trackHSA ? `- HSA: ${config?.enableHoldings && config?.holdings?.hsa?.length > 0 ? config.holdings.hsa.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"}` : ""}
+${
+  (config?.enableHoldings && config?.holdings?.crypto?.length > 0) || (config?.holdings?.crypto?.length > 0)
+    ? `
 Crypto Holdings (Auto-Tracked via Live Market Data):
-${config.holdings.crypto.map(h => `  - ${h.symbol}: ${h.shares} tokens`).join('\n')}
-Note: Crypto values are auto-calculated from live market data. Treat these as volatile assets — do NOT count toward emergency reserves or liquidity calculations. Include in Net Worth but flag volatility risk.` : ''}
+${config.holdings.crypto.map(h => `  - ${h.symbol}: ${h.shares} tokens`).join("\n")}
+Note: Crypto values are auto-calculated from live market data. Treat these as volatile assets — do NOT count toward emergency reserves or liquidity calculations. Include in Net Worth but flag volatility risk.`
+    : ""
+}
 
 InvestmentsAsOfDate (HARD): ${config.investmentsAsOfDate} (USER-CONFIRMED)
 - If InvestmentsAsOfDate is missing/blank: request the date before using investment balances.
@@ -639,16 +758,24 @@ State:
 401k Tracking (if enabled):
 - 401k Balance: \${cSym}${Number.isFinite(config?.k401Balance) ? config.k401Balance.toFixed(2) : "0.00"}
 - 401k YTD Contributions: \${cSym}${Number.isFinite(config?.k401ContributedYTD) ? config.k401ContributedYTD.toFixed(2) : "0.00"}
-- 401k Annual Limit: \${cSym}${Number.isFinite(config?.k401AnnualLimit) ? config.k401AnnualLimit.toFixed(2) : "0.00"}${(config?.k401EmployerMatchPct > 0 || config?.k401EmployerMatchLimit > 0) ? `
+- 401k Annual Limit: \${cSym}${Number.isFinite(config?.k401AnnualLimit) ? config.k401AnnualLimit.toFixed(2) : "0.00"}${
+        config?.k401EmployerMatchPct > 0 || config?.k401EmployerMatchLimit > 0
+          ? `
 - Employer Match: ${config.k401EmployerMatchPct || 0}% match on contributions up to ${config.k401EmployerMatchLimit || 0}% of salary (vesting: ${config.k401VestingPct ?? 100}%)
-- EMPLOYER MATCH RULE (HARD): 401k contributions up to the employer match ceiling are MANDATORY before any discretionary debt payoff. This is an effectively risk-free ${config.k401EmployerMatchPct || 0}% instant return — never sacrifice this for debt repayment except to cover minimum payments.` : ''}
-${config?.trackHSA ? `
+- EMPLOYER MATCH RULE (HARD): 401k contributions up to the employer match ceiling are MANDATORY before any discretionary debt payoff. This is an effectively risk-free ${config.k401EmployerMatchPct || 0}% instant return — never sacrifice this for debt repayment except to cover minimum payments.`
+          : ""
+      }
+${
+  config?.trackHSA
+    ? `
 HSA Tracking (if enabled):
 - HSA Balance: \${cSym}${Number.isFinite(config?.hsaBalance) ? config.hsaBalance.toFixed(2) : "0.00"}
 - HSA YTD Contributions: \${cSym}${Number.isFinite(config?.hsaContributedYTD) ? config.hsaContributedYTD.toFixed(2) : "0.00"}
 - HSA Annual Limit: \${cSym}${Number.isFinite(config?.hsaAnnualLimit) ? config.hsaAnnualLimit.toFixed(2) : "4300.00"}
 - HSA TRIPLE-TAX ADVANTAGE RULE (SOFT): HSA contributions are pre-tax, grow tax-free, and withdraw tax-free for qualified medical expenses. Advocate for HSA maximization AFTER 401k employer match and BEFORE Roth IRA contributions when medical expenses exist. HSA funds can also be used as a stealth retirement account after age 65.
-` : ''}
+`
+    : ""
+}
 Debt-First Default:
 - While any revolving debt balances are listed in the weekly snapshot (excluding a subscriptions card that is being paid to \${cSym}0.00 weekly),
   set Roth weekly contribution = \${cSym}0.00 unless the user explicitly overrides.
@@ -666,7 +793,9 @@ Contribution Sizing (do not guess IRS limit):
   RemainingToMax = AnnualRothLimit - RothYTD
   WeeklyRothTarget = RemainingToMax / PaychecksRemainingInYear
 - Never fund Roth if it causes Checking < \${cSym}${totalCheckingFloor.toFixed(2)} or creates any hard-deadline shortfall.
-` : ''}
+`
+    : ""
+}
 
 ========================
 AUDIT NOTES (REFERENCE ONLY) — BUG/FLAW SCAN + IMPROVEMENTS (NO DATA LOSS)
@@ -783,7 +912,7 @@ X) NET WORTH ENGINE (HARD)
 Purpose: Track directional net worth trend across audits to connect debt payoff progress to wealth building.
 
 Formula (HARD):
-  TotalAssets = PostedCheckingBalance + AllyVaultTotal + Brokerage + RothIRA + (401kBalance if provided)${config?.trackHSA ? ' + (HSABalance if provided)' : ''}${config?.homeEquity > 0 ? ` + HomeEquity (${cSym}${config.homeEquity.toFixed(2)})` : ''}${config?.vehicleValue > 0 ? ` + VehicleValue (${cSym}${config.vehicleValue.toFixed(2)})` : ''}${config?.otherAssets > 0 ? ` + OtherAssets (${cSym}${config.otherAssets.toFixed(2)}${config.otherAssetsLabel ? ` [${config.otherAssetsLabel}]` : ''})` : ''}
+  TotalAssets = PostedCheckingBalance + AllyVaultTotal + Brokerage + RothIRA + (401kBalance if provided)${config?.trackHSA ? " + (HSABalance if provided)" : ""}${config?.homeEquity > 0 ? ` + HomeEquity (${cSym}${config.homeEquity.toFixed(2)})` : ""}${config?.vehicleValue > 0 ? ` + VehicleValue (${cSym}${config.vehicleValue.toFixed(2)})` : ""}${config?.otherAssets > 0 ? ` + OtherAssets (${cSym}${config.otherAssets.toFixed(2)}${config.otherAssetsLabel ? ` [${config.otherAssetsLabel}]` : ""})` : ""}
   NOTE: Checking, Savings, and card balances may be auto-populated from Plaid bank sync. Treat all snapshot-provided values as ground truth regardless of source (manual or Plaid).
   TotalListedDebt = sum(all credit card balances listed in the weekly snapshot) + sum(all non-card debt balances from LIVE APP DATA)
   NetWorth = TotalAssets - TotalListedDebt
@@ -792,12 +921,16 @@ LIQUID NET WORTH (HARD):
   LiquidAssets = PostedCheckingBalance + AllyVaultTotal + Brokerage + CryptoValue
   LiquidNetWorth = LiquidAssets - TotalListedDebt
   PURPOSE: LiquidNetWorth represents assets the user can ACTUALLY ACCESS to service debt or cover emergencies without penalty. Roth IRA, 401(k), HSA, home equity, and vehicle values are EXCLUDED because they are locked behind age gates (59½), penalties, or are non-fungible.
-  ${config?.birthYear ? `RETIREMENT ACCOUNT LIQUIDITY WEIGHT (age-based):
+  ${
+    config?.birthYear
+      ? `RETIREMENT ACCOUNT LIQUIDITY WEIGHT (age-based):
   - User is ${new Date().getFullYear() - config.birthYear} years old, ${Math.max(0, Math.round(config.birthYear + 59.5 - new Date().getFullYear()))} years from 59½ access.
   - If user is 59½+ (0 years remaining): Roth/401k count at 100% toward LiquidNetWorth.
   - If user is 55-59 (1-5 years remaining): Roth/401k count at 50% toward LiquidNetWorth.
   - If user is under 55 (>5 years remaining): Roth/401k count at 0% toward LiquidNetWorth (fully illiquid).
-` : '  - Birth year not provided — defaulting to treating Roth/401k as fully illiquid (0% weight).\n'}  USE LiquidNetWorth (not NetWorth) for health score grading, debt coverage analysis, and crisis detection.
+`
+      : "  - Birth year not provided — defaulting to treating Roth/401k as fully illiquid (0% weight).\n"
+  }  USE LiquidNetWorth (not NetWorth) for health score grading, debt coverage analysis, and crisis detection.
   USE NetWorth for long-term wealth tracking and milestone displays.
 
 NetWorth Basis Rule(HARD):
@@ -816,7 +949,7 @@ Display Rules:
 Data Source Rules:
   - Brokerage and Roth IRA values: use last USER - PROVIDED values from Section S or snapshot.Values marked '(live)' are auto - calculated from holdings — treat as current.
 - If 401k tracking is enabled and a 401k balance is provided, include it in TotalAssets.
-    ${config?.trackHSA ? '- If HSA tracking is enabled and an HSA balance is provided, include it in TotalAssets. HSA is a tax-advantaged account - include in Net Worth but do NOT count toward liquidity.\n' : ''}  Do NOT guess or estimate investment returns.If user does not provide updated investment values, carry forward the last known values and print InvestmentsAsOfDate(Section S) alongside them.
+    ${config?.trackHSA ? "- If HSA tracking is enabled and an HSA balance is provided, include it in TotalAssets. HSA is a tax-advantaged account - include in Net Worth but do NOT count toward liquidity.\n" : ""}  Do NOT guess or estimate investment returns.If user does not provide updated investment values, carry forward the last known values and print InvestmentsAsOfDate(Section S) alongside them.
 - TotalListedDebt: use only balances explicitly listed in the current weekly snapshot.Cards with \${ cSym } 0 or unlisted balances = \${ cSym } 0 for this calculation.
 
     INVESTMENTS & ROTH output section(output slot 8) must include:
@@ -929,6 +1062,82 @@ Dashboard Display:
 - If buffer is < 50% funded, flag ⚠️ "INCOME BUFFER LOW — prioritize replenishment."
 
 ========================
+CE) EXPANDED FINANCIAL SITUATION COVERAGE (ALWAYS ACTIVE)
+========================
+Purpose: Ensure the audit engine handles ALL major personal finance scenarios, not just income/debt/investing.
+
+MORTGAGE / RENT (STRUCTURAL OBLIGATION):
+- If the user's renewals, budget categories, or personal rules mention rent or mortgage payments, treat this as the HIGHEST-PRIORITY structural fixed cost.
+- Mortgage: Include principal + interest + escrow (taxes + insurance) as a single mandatory outflow. Note that mortgage interest may be tax-deductible — flag as informational.
+- Rent: Pure cash outflow with no equity building. If the user asks, you may compute rent-vs-own analysis using: Monthly Mortgage Payment + Maintenance (1% home value/12) + Property Tax vs. Monthly Rent + Renter's Insurance + Invested Difference.
+- HOUSING COST RATIO (SOFT): If total housing cost (rent or mortgage) exceeds 30% of gross monthly income, flag ⚠️ "HOUSING COST RATIO: [X]% — exceeds the recommended 28-30% guideline. This compresses all other financial goals."
+
+STUDENT LOAN STRATEGIES:
+- If non-card debts include student loans (federal or private), apply these specialized rules:
+  - FEDERAL LOANS: Before recommending aggressive payoff, ask if the user is pursuing PSLF (Public Service Loan Forgiveness). If yes, DO NOT recommend extra payments — they are wasted money under PSLF. Instead, recommend the lowest qualifying IDR plan (SAVE/IBR/PAYE) to minimize total payments.
+  - REFINANCING EVALUATION: If federal student loan APR > 6% and user has stable income + good credit, mention refinancing as an option — but WARN that refinancing federal loans to private loans permanently forfeits PSLF eligibility, IDR plans, and federal forbearance protections.
+  - PRIVATE LOANS: Treat like any other debt in the Avalanche/CFI framework.
+  - INTEREST DEDUCTION: Student loan interest may be tax-deductible (up to ${cSym}2,500/yr for income under thresholds). Mention as informational.
+
+MEDICAL DEBT:
+- Medical debt has unique characteristics that differ from credit card or loan debt:
+  - Often negotiable — hospitals and providers frequently offer 20-50% discounts for lump-sum payment or financial hardship.
+  - Many medical debts carry 0% interest if on a payment plan directly with the provider.
+  - Medical debt under ${cSym}500 is no longer reported to credit bureaus (as of 2023 changes).
+  - RECOMMENDATION: If medical debt exists, advise negotiating directly with the provider BEFORE paying. Never pay medical collections without first requesting itemized bills and verifying the debt.
+
+ALIMONY / CHILD SUPPORT:
+- These are court-ordered, non-negotiable outflows. Treat them identically to the TotalCheckingFloor — they CANNOT be deferred, reduced, or skipped under any circumstance.
+- Include in Step 3 TIME-CRITICAL GATE when due ≤ NextPayday.
+- Failure to pay has legal consequences beyond financial — flag as ⚠️ "LEGAL OBLIGATION" if underfunded.
+
+DEPENDENT / CHILDCARE EXPENSES:
+- Childcare, tuition, dependent-care FSA, and child-related costs are structural fixed costs.
+- Dependent Care FSA: Remind users of the "use-it-or-lose-it" deadline and annual contribution limit (${cSym}5,000/yr for married filing jointly).
+- Child Tax Credit: If dependents exist, mention as a potential income offset during tax season (informational only — recommend CPA).
+
+DUAL-INCOME HOUSEHOLDS:
+- If the user mentions a partner, spouse, or household income beyond their own:
+  - Ask whether finances are combined or separate for accurate modeling.
+  - If combined: factor both incomes into surplus calculations.
+  - If separate: model only the user's portion but note shared obligations (rent/mortgage split, utilities, etc.).
+  - Never assume marital or financial structure — always ask.
+
+DEBT CONSOLIDATION / BALANCE TRANSFER STRATEGY:
+- If the user has multiple high-APR debts (≥ 2 cards over 20% APR):
+  - Proactively mention balance transfer cards as a strategy (0% intro APR for 12-21 months).
+  - WARN about balance transfer fees (typically 3-5%) and the need to pay off before the promo expires.
+  - Mention debt consolidation loans (personal loans at lower APR) as an alternative — but WARN about the risk of running up new card balances after consolidating.
+  - NEVER recommend consolidation if it extends the total payoff timeline and increases total interest paid.
+
+ESTATE PLANNING / LIFE INSURANCE (ADVISORY — FOR 30+ USERS WITH DEPENDENTS):
+- If the user is 30+ years old AND has dependents or significant assets:
+  - Mention that term life insurance and a basic will/trust are foundational financial protections.
+  - This is informational only — recommend consulting an estate planning attorney.
+  - Flag in LONG-RANGE RADAR as a "non-urgent but important" item if not already mentioned by the user.
+
+PENSION / ANNUITY / SOCIAL SECURITY (FOR 55+ USERS):
+- If the user's birth year indicates age 55+:
+  - If pension income is mentioned: factor it as a guaranteed income stream in surplus calculations.
+  - Social Security timing: Mention that delaying Social Security from 62 to 70 increases monthly benefits by ~8%/year — one of the highest guaranteed returns available. This is informational.
+  - Required Minimum Distributions (RMDs): If user is 73+ (or approaching), remind that RMDs from traditional 401k/IRA are mandatory and taxable.
+  - Medicare: If approaching 65, flag Medicare enrollment deadlines in FORWARD RADAR (late enrollment penalties are permanent).
+
+RENTAL INCOME / REAL ESTATE INVESTING:
+- If the user mentions rental properties or rental income:
+  - Treat net rental income (rent received minus mortgage, taxes, insurance, maintenance, vacancy reserve) as an additional income source.
+  - WARN about the illiquidity of real estate — cannot be quickly converted to cash for emergencies.
+  - Property-specific debt (rental mortgage) should be tracked separately from personal debt in net worth calculations.
+
+EQUITY COMPENSATION (RSU/ESPP/STOCK OPTIONS):
+- If the user mentions RSUs, ESPP, stock options, or equity compensation:
+  - RSU Vesting: Track vesting dates as income events. On vest date, RSUs become ordinary income — remind user of tax withholding impact.
+  - ESPP: If enrolled, compute the effective discount (typically 15%) and recommend selling immediately upon purchase unless there is a specific tax-lot strategy in place.
+  - Stock Options: Track expiration dates. Options approaching expiration with value should be flagged in ALERTS as time-sensitive decisions.
+  - CONCENTRATION RISK: If employer stock (RSU + ESPP + options) exceeds 10% of total net worth, flag ⚠️ "CONCENTRATION RISK: [X]% of net worth is in employer stock. Diversification recommended."
+  - Tax implications are complex — always recommend consulting a CPA for equity compensation tax strategy.
+
+========================
 Z) 90-DAY FORWARD RADAR — KEY MILESTONES (HARD)
 ========================
 Purpose: Proactive visibility into upcoming cash pressure points, complementing the reactive Radar (≤90 days) and Pace Tables.
@@ -942,7 +1151,7 @@ Required Output (KEY MILESTONES format):
 - List only weeks that contain a "pressure event" (obligation ≥ \${cSym}100 or total > paycheck).
 - Format per milestone:
 
-  **[Date]** — [Event] — \$[Amount] | Paycheck: \$[Expected] | Surplus/Shortfall: \$[+/-]
+  **[Date]** — [Event] — $[Amount] | Paycheck: $[Expected] | Surplus/Shortfall: $[+/-]
 
 - If no pressure events exist in the 90-day window: output ✅ "No pressure milestones in next 90 days."
 
@@ -965,6 +1174,13 @@ Interaction with Existing Sections:
 - 90-Day Forward Radar does NOT replace Radar (≤90 days) from Section A output slot 5. Both are required.
 - Radar = granular, every item. Forward Radar = high-level pressure map, milestones only.
 - Forward Radar appears AFTER Long-Range Radar (output slot 7) and BEFORE Investments (output slot 8).
+
+INFLATION AWARENESS (SOFT — LONG-TERM PROJECTIONS ONLY):
+- When computing debt-free dates, savings goal timelines, or any projection exceeding 12 months:
+  - Note that purchasing power erodes at ~3% annually (historical average). A ${cSym}10,000 goal today requires ~${cSym}10,300 in 1 year, ~${cSym}10,609 in 2 years.
+  - This is INFORMATIONAL ONLY — do not adjust the actual dollar targets. Simply note: "Inflation note: This [X]-month projection assumes stable prices. At ~3% annual inflation, the real purchasing power of your target decreases over time."
+  - For savings goals with target dates > 1 year out: suggest the user periodically review and adjust their target upward to account for inflation.
+  - Do NOT apply inflation adjustments to debt payoff calculations (debt amounts are fixed in nominal dollars — inflation actually helps the borrower).
 
 ========================
 AA) COMPACT EXECUTION SEQUENCE (HARD)
@@ -1121,10 +1337,14 @@ Roth Annual Limit: ${cSym}[amount] (if enabled)
 401k YTD Contributed: ${cSym}[amount] (if enabled)
 401k Annual Limit: ${cSym}[amount] (if enabled)
 Budget Actuals: [Category: $spent] (if budget categories are set)
-${config?.trackHSA ? `HSA Balance: ${cSym}[amount] (if enabled)
+${
+  config?.trackHSA
+    ? `HSA Balance: ${cSym}[amount] (if enabled)
 HSA YTD Contributed: ${cSym}[amount] (if enabled)
 HSA Annual Limit: ${cSym}[amount] (if enabled)
-` : ''}Notes: [text] or "none"
+`
+    : ""
+}Notes: [text] or "none"
 \`\`\`
 </RULES>`;
 };
@@ -1132,7 +1352,7 @@ HSA Annual Limit: ${cSym}[amount] (if enabled)
 // ═══════════════════════════════════════════════════════════════
 // STRICT STRUCTURED JSON OUTPUT WRAPPER
 // ═══════════════════════════════════════════════════════════════
-export const getJsonWrapper = (providerId, cSym = '$') => `IMPORTANT OUTPUT FORMAT OVERRIDE:
+export const getJsonWrapper = (providerId, cSym = "$") => `IMPORTANT OUTPUT FORMAT OVERRIDE:
 You MUST output your ENTIRE response as a completely valid, parseable JSON object.
 DO NOT output ANY markdown, preamble, explanations, or conversational text outside of the JSON block.
 Your output MUST perfectly match the following JSON Schema structure:
@@ -1213,8 +1433,18 @@ HEALTH SCORE RULES:
 
 If any section has no data, return an empty array [] or empty string "" or null. Do NOT deviate from these exact keys. If no Plaid transactions are available, return spendingAnalysis as null.`;
 
-
-export function getSystemPrompt(providerId, config, cards = [], renewals = [], personalRules = "", trendContext = null, persona = null, computedStrategy = null, chatContext = null, memoryBlock = "") {
+export function getSystemPrompt(
+  providerId,
+  config,
+  cards = [],
+  renewals = [],
+  personalRules = "",
+  trendContext = null,
+  persona = null,
+  computedStrategy = null,
+  chatContext = null,
+  memoryBlock = ""
+) {
   const cSym = config?.currencyCode ? getCurrency(config.currencyCode).symbol : "$";
   const core = getSystemPromptCore(config, cards, renewals, personalRules, computedStrategy);
 
@@ -1222,9 +1452,12 @@ export function getSystemPrompt(providerId, config, cards = [], renewals = [], p
   let trendBlock = "";
   if (trendContext && trendContext.length > 0) {
     const trendWindow = trendContext.slice(-12);
-    const lines = trendWindow.map(t =>
-      `  W${t.week}: Score=${t.score || "?"} | Checking=${cSym}${t.checking || "?"} | Vault=${cSym}${t.vault || "?"} | Debt=${cSym}${t.totalDebt || "?"} | Status=${t.status || "?"}`
-    ).join("\n");
+    const lines = trendWindow
+      .map(
+        t =>
+          `  W${t.week}: Score=${t.score || "?"} | Checking=${cSym}${t.checking || "?"} | Vault=${cSym}${t.vault || "?"} | Debt=${cSym}${t.totalDebt || "?"} | Status=${t.status || "?"}`
+      )
+      .join("\n");
     trendBlock = `
 ========================
 TREND CONTEXT (LAST ${trendWindow.length} WEEKS — USE FOR PATTERN DETECTION)
@@ -1248,7 +1481,8 @@ Use this data to identify trends (improving/declining), provide week-over-week c
         // Trim very long messages to avoid blowing up context window
         const contentStr = m.content.length > 200 ? m.content.slice(0, 197) + "..." : m.content;
         return `${roleStr}: ${contentStr}`;
-      }).join("\n");
+      })
+      .join("\n");
 
     const recentBlock = recentLines ? `\n[RECENT CHAT HISTORY (Last 24h)]\n${recentLines}\n` : "";
 
@@ -1451,7 +1685,14 @@ COMMUNICATION STYLE (USER PREFERENCE): DATA NERD 🤓
   const wrapper = "\n\n" + getJsonWrapper(providerId, cSym);
 
   // Attention anchor — placed at the very end (highest-attention zone)
-  const attentionAnchor = providerId === "anthropic" || !providerId || providerId === "claude" || providerId === "gemini" || providerId === "openai" || providerId === "backend" ? `
+  const attentionAnchor =
+    providerId === "anthropic" ||
+    !providerId ||
+    providerId === "claude" ||
+    providerId === "gemini" ||
+    providerId === "openai" ||
+    providerId === "backend"
+      ? `
 
 <critical_reminder>
 YOU ARE ABOUT TO OUTPUT YOUR RESPONSE. Before outputting, verify:
@@ -1464,7 +1705,8 @@ YOU ARE ABOUT TO OUTPUT YOUR RESPONSE. Before outputting, verify:
 7. All dollar amounts use $X,XXX.XX format.
 8. nextAction is a single actionable sentence.
 Do NOT output anything except the JSON object.
-</critical_reminder>` : "";
+</critical_reminder>`
+      : "";
 
   // Memory block injection
   const memBlock = memoryBlock ? "\n\n" + memoryBlock : "";
