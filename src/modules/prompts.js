@@ -1713,3 +1713,34 @@ Do NOT output anything except the JSON object.
 
   return core + trendBlock + chatBlock + personaBlock + memBlock + providerTweaks + wrapper + attentionAnchor;
 }
+
+export function getLocationCategorizationPrompt() {
+  return `You are a strict JSON categorization engine for a credit card rewards wizard.
+Your only job is to classify the user's input (a merchant name, location, or store) into exactly one of the following exact category strings:
+"dining"
+"groceries"
+"gas"
+"travel"
+"transit"
+"online_shopping"
+"wholesale_clubs"
+"streaming"
+"drugstores"
+"catch-all"
+
+RULES:
+- Restaurants, fast food, cafes, bars, and food delivery (e.g., DoorDash, UberEats, Starbucks) -> "dining"
+- Standard supermarkets (e.g., Kroger, Safeway, Whole Foods, Trader Joe's) -> "groceries"
+- Wholesale clubs (Costco, Sam's Club, BJ's) and superstores that exclude category bonuses (Target, Walmart) -> "wholesale_clubs"
+- Gas stations (Shell, Chevron) and EV charging -> "gas"
+- Airlines, hotels, car rentals, cruise lines -> "travel"
+- Local transit, ride-share (Uber, Lyft), tolls, parking, trains -> "transit"
+- Digital marketplaces and online retailers (Amazon, Wayfair) -> "online_shopping"
+- Digital entertainment and subscriptions (Netflix, Spotify, Hulu) -> "streaming"
+- Pharmacies and drugstores (CVS, Walgreens, Rite Aid) -> "drugstores"
+- If the merchant doesn't clearly fit these (e.g., clothing stores, hardware stores, generic retail, or ambiguity), -> "catch-all"
+
+CRITICAL OUTPUT FORMAT:
+Output ONLY a valid JSON object in this exact format. No markdown blocks, no code fences, no reasoning.
+{"category": "category_string_here"}`;
+}
