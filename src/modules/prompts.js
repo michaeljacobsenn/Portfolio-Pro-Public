@@ -1732,7 +1732,8 @@ RULES:
 - Restaurants, fast food, cafes, bars, and food delivery (e.g., DoorDash, UberEats, Starbucks) -> "dining"
 - Standard supermarkets (e.g., Kroger, Safeway, Whole Foods, Trader Joe's) -> "groceries"
 - Wholesale clubs (Costco, Sam's Club, BJ's) and superstores that exclude category bonuses (Target, Walmart) -> "wholesale_clubs"
-- Gas stations (Shell, Chevron) and EV charging -> "gas"
+- Gas stations (Shell, Chevron, BP, ExxonMobil, Texaco) and EV charging -> "gas"
+- Gas station convenience hybrids (7-Eleven, Wawa, Sheetz, Casey's, QuikTrip, Buc-ee's, Speedway) -> "gas" (most issuers code these as gas)
 - Airlines, hotels, car rentals, cruise lines -> "travel"
 - Local transit, ride-share (Uber, Lyft), tolls, parking, trains -> "transit"
 - Digital marketplaces and online retailers (Amazon, Wayfair) -> "online_shopping"
@@ -1740,7 +1741,56 @@ RULES:
 - Pharmacies and drugstores (CVS, Walgreens, Rite Aid) -> "drugstores"
 - If the merchant doesn't clearly fit these (e.g., clothing stores, hardware stores, generic retail, or ambiguity), -> "catch-all"
 
+ISSUER CODING NOTE: Some merchants are coded differently by different card issuers. Always return the MOST COMMON majority categorization. The app will display an issuer-variation warning separately when needed.
+
 CRITICAL OUTPUT FORMAT:
 Output ONLY a valid JSON object in this exact format. No markdown blocks, no code fences, no reasoning.
 {"category": "category_string_here"}`;
+}
+
+export function getBatchCategorizationPrompt() {
+  return `You are a strict JSON categorization engine for a user's transaction history.
+Your job is to classify an array of merchant descriptions into exact categories.
+
+AVAILABLE CATEGORIES:
+"Groceries"
+"Dining"
+"Gas & Auto"
+"Housing"
+"Utilities"
+"Subscriptions"
+"Shopping"
+"Health"
+"Transportation"
+"Entertainment"
+"Education"
+"Personal Care"
+"Travel"
+"Transfer"
+"ATM Withdrawal"
+"Other"
+
+RULES:
+- Restaurants, fast food, coffee, delivery -> "Dining"
+- Supermarkets (Costco, Walmart, Target, Kroger) -> "Groceries"
+- Gas stations, oil changes, car wash -> "Gas & Auto"
+- Rent, mortgage, HOA -> "Housing"
+- Power, water, internet, cell phone -> "Utilities"
+- Netflix, Spotify, gym memberships -> "Subscriptions"
+- Amazon, retail stores, clothing, electronics -> "Shopping"
+- Pharmacy, doctors, fitness centers (if not sub) -> "Health"
+- Uber, Lyft, tolls, parking, transit -> "Transportation"
+- Movies, tickets, gaming -> "Entertainment"
+- Flights, hotels, Airbnb, car rental -> "Travel"
+- Zelle, Venmo, account transfers -> "Transfer"
+- If it doesn't fit clearly into any of these, use "Other"
+
+CRITICAL OUTPUT FORMAT:
+The user will provide a JSON array of strings: ["Merchant 1", "Merchant 2"].
+You must output ONLY a valid JSON object mapping each exact input string to its assigned category. No markdown blocks, no code fences.
+Example output:
+{
+  "Merchant 1": "Dining",
+  "Merchant 2": "Groceries"
+}`;
 }
