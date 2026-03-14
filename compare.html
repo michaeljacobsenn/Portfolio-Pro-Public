@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Compare | Catalyst Cash vs. Competitors</title>
+    <meta name="description"
+        content="See how Catalyst Cash compares to Monarch, YNAB, Origin, Copilot, Empower, MaxRewards, Rocket Money, and Credit Karma. Feature-by-feature breakdown with real pricing." />
+    <meta property="og:title" content="How Catalyst Cash Stacks Up — Feature & Price Comparison" />
+    <meta property="og:description"
+        content="AI-powered weekly audits, privacy-first, and competitively priced. Compare Catalyst Cash to every major personal finance app." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://catalystcash.app/compare.html" />
+    <meta property="og:image" content="https://catalystcash.app/icon-512.png" />
+    <link rel="canonical" href="https://catalystcash.app/compare.html" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&amp;family=Space+Grotesk:wght@400;500;700&amp;display=swap"
+        rel="stylesheet" />
+    <meta name="robots" content="index, follow" />
+    <link rel="stylesheet" href="/style.css?v=2.9" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Compare Catalyst Cash vs. Competitors",
+      "description": "Feature-by-feature comparison of Catalyst Cash against Monarch, YNAB, Origin, Copilot, Empower, MaxRewards, Rocket Money, and Credit Karma with verified pricing.",
+      "url": "https://catalystcash.app/compare.html",
+      "mainEntity": {
+        "@type": "SoftwareApplication",
+        "name": "Catalyst Cash",
+        "operatingSystem": "iOS",
+        "applicationCategory": "FinanceApplication",
+        "offers": [
+          { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free tier" },
+          { "@type": "Offer", "price": "9.99", "priceCurrency": "USD", "description": "Pro monthly" },
+          { "@type": "Offer", "price": "69.99", "priceCurrency": "USD", "description": "Pro yearly" }
+        ]
+      }
+    }
+    </script>
+
+    <style>
+        /* ═══ Compare Page Styles ═══ */
+        .compare-hero {
+            padding: 92px 0 40px;
+            text-align: center;
+        }
+
+        .compare-hero h1 {
+            max-width: none;
+            font-size: clamp(2.2rem, 5vw, 4rem);
+            margin: 18px auto 16px;
+        }
+
+        .compare-hero .hero-sub {
+            max-width: 42rem;
+            margin: 0 auto 32px;
+        }
+
+        .compare-hero .eyebrow {
+            margin: 0 auto;
+        }
+
+        /* ── Pricing Cards ── */
+        .competitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 14px;
+            margin-bottom: 56px;
+        }
+
+        .comp-card {
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--line);
+            background: var(--bg-panel);
+            padding: 24px 18px;
+            text-align: center;
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+            position: relative;
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .comp-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--line-strong);
+        }
+
+        .comp-card.highlight {
+            border-color: rgba(16, 185, 129, 0.5);
+            background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), var(--bg-panel));
+            box-shadow: 0 12px 40px rgba(16, 185, 129, 0.15);
+        }
+
+        .comp-card.highlight::before {
+            content: "You are here";
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--green);
+            color: #0C121B;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-family: "IBM Plex Mono", monospace;
+            animation: pulse-badge 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4); }
+            50% { box-shadow: 0 0 12px 4px rgba(46, 204, 113, 0.15); }
+        }
+
+        .comp-card .comp-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.03em;
+        }
+
+        .comp-card .comp-price {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin-bottom: 4px;
+        }
+
+        .comp-card.highlight .comp-price {
+            color: var(--green);
+        }
+
+        .comp-card .comp-period {
+            font-size: 11px;
+            color: var(--dim);
+            margin-bottom: 10px;
+        }
+
+        .comp-card .comp-tag {
+            display: inline-flex;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: "IBM Plex Mono", monospace;
+        }
+
+        .tag-ai { background: rgba(123, 94, 167, 0.12); color: #D4C4FB; border: 1px solid rgba(123, 94, 167, 0.22); }
+        .tag-budget { background: rgba(107, 163, 232, 0.1); color: var(--blue); border: 1px solid rgba(107, 163, 232, 0.18); }
+        .tag-tracking { background: rgba(224, 168, 77, 0.1); color: var(--amber); border: 1px solid rgba(224, 168, 77, 0.18); }
+        .tag-free { background: rgba(46, 204, 113, 0.1); color: var(--green); border: 1px solid rgba(46, 204, 113, 0.18); }
+        .tag-sub { background: rgba(232, 92, 106, 0.1); color: var(--red); border: 1px solid rgba(232, 92, 106, 0.18); }
+
+        /* ── Feature Table ── */
+        .feature-table-wrap {
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--line);
+            background: var(--bg-panel);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 56px;
+        }
+
+        .feature-table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .feature-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 750px;
+        }
+
+        .feature-table thead th {
+            padding: 16px 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: "IBM Plex Mono", monospace;
+            font-weight: 700;
+            color: var(--dim);
+            border-bottom: 1px solid var(--line);
+            text-align: center;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            background: var(--bg-panel);
+            z-index: 2;
+        }
+
+        .feature-table thead th:first-child {
+            text-align: left;
+            padding-left: 22px;
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            background: var(--bg-panel);
+        }
+
+        .feature-table thead th.th-highlight {
+            color: var(--green);
+            background: var(--green-deep);
+            border-bottom: 2px solid var(--green);
+        }
+
+        .feature-table tbody td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            text-align: center;
+            color: var(--muted);
+            vertical-align: middle;
+            font-size: 12.5px;
+        }
+
+        .feature-table tbody td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text);
+            padding-left: 22px;
+            white-space: nowrap;
+            position: sticky;
+            left: 0;
+            background: var(--bg-panel);
+            z-index: 1;
+        }
+
+        .feature-table tbody td.td-highlight {
+            background: var(--green-deep);
+            color: var(--text);
+        }
+
+        .feature-table tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        .feature-table tbody tr:hover td.td-highlight { background: rgba(16, 185, 129, 0.2); }
+        .feature-table tbody tr:hover td:first-child { background: rgba(255, 255, 255, 0.02); }
+        .feature-table tbody tr:last-child td { border-bottom: none; }
+
+        .feature-table tbody tr.cat-row td {
+            padding: 18px 12px 9px 22px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-family: "IBM Plex Mono", monospace;
+            font-weight: 700;
+            color: var(--blue);
+            border-bottom: 1px solid var(--line);
+            background: rgba(107, 163, 232, 0.03);
+        }
+
+        .feature-table tbody tr.cat-row td.td-highlight { background: rgba(16, 185, 129, 0.2); }
+
+        .yes { color: var(--green); font-weight: 700; }
+        .no { color: var(--dim); opacity: 0.5; }
+        .partial { color: var(--amber); }
+
+        /* ── App Screenshots ── */
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 56px;
+        }
+
+        .screenshot-item {
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--line);
+            background: var(--bg-panel);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .screenshot-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .screenshot-item .caption {
+            padding: 10px 14px;
+            border-top: 1px solid var(--line);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: -0.01em;
+        }
+
+        /* ── Advantages Section ── */
+        .adv-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 56px;
+        }
+
+        .adv-card {
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--line);
+            background: var(--bg-panel);
+            padding: 22px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .adv-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--line-strong);
+        }
+
+        .adv-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            font-family: "IBM Plex Mono", monospace;
+        }
+
+        .adv-card h3 {
+            font-size: 1.05rem;
+            letter-spacing: -0.03em;
+            margin-bottom: 6px;
+        }
+
+        .adv-card p {
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--muted);
+        }
+
+        /* ── Honesty Section ── */
+        .honesty-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 56px;
+        }
+
+        .honesty-card {
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(224, 168, 77, 0.12);
+            background: rgba(224, 168, 77, 0.03);
+            padding: 22px;
+        }
+
+        .honesty-card .comp-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+            color: var(--amber);
+        }
+
+        .honesty-card p {
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--muted);
+        }
+
+        /* ── Scroll Animations ── */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.7s cubic-bezier(.215, .61, .355, 1),
+                transform 0.7s cubic-bezier(.215, .61, .355, 1);
+        }
+
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .competitor-grid { grid-template-columns: repeat(3, 1fr); }
+            .screenshots-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .competitor-grid { grid-template-columns: repeat(2, 1fr); }
+            .compare-hero { padding: 72px 0 32px; }
+            .screenshots-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+
+<body>
+    <a href="#main-content" class="skip-link"
+        style="position:absolute;top:-100%;left:16px;padding:12px 20px;background:var(--green);color:#0C121B;font-weight:700;border-radius:8px;z-index:200;font-size:14px;transition:top 0.2s;"
+        onfocus="this.style.top='12px'" onblur="this.style.top='-100%'">Skip to content</a>
+    <div class="accent-line"></div>
+    <div id="mobile-overlay" class="mobile-overlay"></div>
+
+    <div class="page">
+        <nav role="navigation" aria-label="Main navigation">
+            <div class="nav-inner">
+                <a href="/" class="brand">
+                    <img src="/icon-192.png" alt="Catalyst Cash Logo" width="32" height="32" loading="eager" />
+                    Catalyst Cash
+                </a>
+                <button class="hamburger" id="hamburger-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="nav-links" id="nav-links">
+                    <a href="/#sample-audit">Sample Audit</a>
+                    <a href="/#difference">Why It Wins</a>
+                    <a href="/#pricing">Pricing</a>
+                    <a href="/compare.html">Compare</a>
+                    <a href="/guide.html">Guide</a>
+                    <a href="https://testflight.apple.com/join/3rpWQq49" class="nav-cta">Join TestFlight</a>
+                </div>
+            </div>
+        </nav>
+
+        <main id="main-content" class="shell">
+            <section class="compare-hero" aria-label="Compare hero">
+                <div class="eyebrow">March 2026 pricing &bull; verified feature data</div>
+                <h1>How does Catalyst Cash stack up?</h1>
+                <p class="hero-sub">
+                    An honest, side-by-side breakdown against the biggest names in personal finance.
+                    Real pricing, real capabilities — no spin.
+                </p>
+            </section>
+
+            <!-- ── Price at a Glance ── -->
+            <section class="section fade-up" style="padding-top: 0;">
+                <div class="section-head">
+                    <div class="micro-label">Price Comparison</div>
+                    <h2>Competitively priced. Twice the intelligence.</h2>
+                    <p>Many AI-powered competitors charge more — and none offer our focused weekly audit approach.</p>
+                </div>
+
+                <div class="competitor-grid">
+                    <div class="comp-card highlight">
+                        <div class="comp-name">Catalyst Cash Pro</div>
+                        <div class="comp-price">$9.99</div>
+                        <div class="comp-sub">/ month</div>
+                        <p>All features. 25 AskAI chats/day. 5 institutions with live sync. No ads.</p>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">Empower</div>
+                        <div class="comp-price">Free</div>
+                        <div class="comp-period">Upsells wealth management</div>
+                        <span class="comp-tag tag-tracking">Net Worth</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">MaxRewards</div>
+                        <div class="comp-price">$40</div>
+                        <div class="comp-period">/year &bull; Gold Tier</div>
+                        <span class="comp-tag tag-budget">Cards</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">Rocket Money</div>
+                        <div class="comp-price">$6–14</div>
+                        <div class="comp-period">/month &bull; Pay what you want</div>
+                        <span class="comp-tag tag-sub">Sub Manager</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">Origin</div>
+                        <div class="comp-price">$12.99</div>
+                        <div class="comp-period">/month &bull; No free tier</div>
+                        <span class="comp-tag tag-ai">AI Advisor</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">Copilot</div>
+                        <div class="comp-price">$13.00</div>
+                        <div class="comp-period">/month &bull; No free tier</div>
+                        <span class="comp-tag tag-tracking">AI Categorize</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">YNAB</div>
+                        <div class="comp-price">$14.99</div>
+                        <div class="comp-period">/month &bull; No free tier</div>
+                        <span class="comp-tag tag-budget">Budgeting</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">Monarch</div>
+                        <div class="comp-price">$14.99</div>
+                        <div class="comp-period">/month &bull; No free tier</div>
+                        <span class="comp-tag tag-tracking">All-in-One</span>
+                    </div>
+                    <div class="comp-card">
+                        <div class="comp-name">Credit Karma</div>
+                        <div class="comp-price">Free</div>
+                        <div class="comp-period">Ad-supported &bull; Data-monetized</div>
+                        <span class="comp-tag tag-free">Credit Score</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Feature-by-Feature Table (Simplified) ── -->
+            <section class="section fade-up" style="padding-top: 0;">
+                <div class="section-head">
+                    <div class="micro-label">Feature Matrix</div>
+                    <h2>The features that matter.</h2>
+                    <p>Key differentiators, verified against each competitor's current offering as of March 2026.</p>
+                </div>
+
+                <div class="feature-table-wrap">
+                    <div class="feature-table-scroll">
+                        <table class="feature-table" role="grid">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Feature</th>
+                                    <th scope="col" class="th-highlight">Catalyst Cash</th>
+                                    <th scope="col">Copilot</th>
+                                    <th scope="col">Monarch</th>
+                                    <th scope="col">YNAB</th>
+                                    <th scope="col">Origin</th>
+                                    <th scope="col">Rocket Money</th>
+                                    <th scope="col">Simplifi</th>
+                                    <th scope="col">EveryDollar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- AI -->
+                                <tr class="cat-row">
+                                    <td colspan="9">AI & Intelligence</td>
+                                </tr>
+                                <tr>
+                                    <td>AI Financial Analysis</td>
+                                    <td class="td-highlight"><span class="yes">✓ Advanced</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Basic</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="yes">✓ Proprietary</span></td>
+                                    <td><span class="partial">Basic companion</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+                                <tr>
+                                    <td>AI Chat</td>
+                                    <td class="td-highlight"><span class="yes">✓ 10/day Free<br /><span style="font-size:10px;color:var(--text-muted)">25/day Pro</span></span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="partial">Premium only</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+
+                                <!-- Core Finance -->
+                                <tr class="cat-row">
+                                    <td colspan="9">Core Finance</td>
+                                </tr>
+                                <tr>
+                                    <td>Bank Sync (Plaid)</td>
+                                    <td class="td-highlight"><span class="yes">2 manual snapshots Free<br /><span style="font-size:10px;color:var(--text-muted)">5 live institutions Pro</span></span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="partial">Premium</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Budgeting</td>
+                                    <td class="td-highlight"><span class="yes">✓ Zero-based</span></td>
+                                    <td><span class="yes">✓ Adaptive</span></td>
+                                    <td><span class="yes">✓ Flex</span></td>
+                                    <td><span class="yes">✓ Envelope</span></td>
+                                    <td><span class="yes">✓ AI-built</span></td>
+                                    <td><span class="yes">✓ Premium</span></td>
+                                    <td><span class="yes">✓ Flex</span></td>
+                                    <td><span class="yes">✓ Zero-based</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Investment Tracking</td>
+                                    <td class="td-highlight"><span class="yes">✓ Live prices</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="no">Manual</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="partial">Net worth only</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Subscription Tracking</td>
+                                    <td class="td-highlight"><span class="yes">✓ 1-Click Cancel Links</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Detection</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Detection</span></td>
+                                    <td><span class="partial">Auto-cancel (needs login)</span></td>
+                                    <td><span class="partial">Detection</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+
+                                <!-- Unique -->
+                                <tr class="cat-row">
+                                    <td colspan="9">Unique to Catalyst Cash</td>
+                                </tr>
+                                <tr>
+                                    <td>Weekly AI Audit</td>
+                                    <td class="td-highlight"><span class="yes">✓ Strategy + Actions</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Daily recaps</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Card Wizard (Points Optimizer)</td>
+                                    <td class="td-highlight"><span class="yes">✓ Geo-aware</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Debt Payoff Simulator</td>
+                                    <td class="td-highlight"><span class="yes">✓ Compound + promo APR</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Goal tracking</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Snowball only</span></td>
+                                </tr>
+                                <tr>
+                                    <td>FIRE Calculator</td>
+                                    <td class="td-highlight"><span class="yes">✓</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="partial">Retirement forecast</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Bill Negotiation Scripts</td>
+                                    <td class="td-highlight"><span class="yes">✓ AI Scripts ($0 fee)</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="yes">✓ 35–60% fee</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="no">—</span></td>
+                                </tr>
+
+                                <!-- Privacy -->
+                                <tr class="cat-row">
+                                    <td colspan="9">Privacy & Platform</td>
+                                </tr>
+                                <tr>
+                                    <td>On-Device Storage</td>
+                                    <td class="td-highlight"><span class="yes">✓ Local-first</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                    <td><span class="no">Cloud</span></td>
+                                </tr>
+                                <tr>
+                                    <td>No Ads / No Data Selling</td>
+                                    <td class="td-highlight"><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                    <td><span class="yes">✓</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Free Tier</td>
+                                    <td class="td-highlight"><span class="yes">✓ Full-featured</span></td>
+                                    <td><span class="no">30-day trial</span></td>
+                                    <td><span class="no">7-day trial</span></td>
+                                    <td><span class="no">34-day trial</span></td>
+                                    <td><span class="no">—</span></td>
+                                    <td><span class="yes">✓ Limited</span></td>
+                                    <td><span class="no">Trial only</span></td>
+                                    <td><span class="yes">✓ Manual only</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Yearly Price</td>
+                                    <td class="td-highlight"><span class="yes">$69.99 ($5.83/mo)</span></td>
+                                    <td>$95 ($7.92)</td>
+                                    <td>$99.99 ($8.33)</td>
+                                    <td>$109 ($9.08)</td>
+                                    <td>$99 ($8.25)</td>
+                                    <td>$95 ($7.91)</td>
+                                    <td>$47.88 ($3.99)</td>
+                                    <td>$79.99 ($6.67)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Real App Screenshots ── -->
+            <section class="section fade-up" style="padding-top: 0;">
+                <div class="section-head">
+                    <div class="micro-label">See It in Action</div>
+                    <h2>Real screenshots. Real app.</h2>
+                    <p>What you actually get — no mockups, no renders.</p>
+                </div>
+
+                <div class="screenshots-grid">
+                    <div class="screenshot-item">
+                        <img src="/img/app-dashboard.png" alt="Catalyst Cash Dashboard — Command Center with health score, net worth, and AI insights" loading="lazy" />
+                        <div class="caption">Dashboard</div>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="/img/app-chat.png" alt="Catalyst Cash Ask AI — private financial Q&A with multiple AI models" loading="lazy" />
+                        <div class="caption">Ask AI</div>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="/img/app-cashflow.png" alt="Catalyst Cash Cashflow — budget tracking and expense management" loading="lazy" />
+                        <div class="caption">Cashflow</div>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="/img/app-audit-tab.png" alt="Catalyst Cash Audit Tab — weekly AI audit with health trend and history" loading="lazy" />
+                        <div class="caption">AI Audit</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Why Catalyst Cash Wins ── -->
+            <section class="section fade-up" style="padding-top: 0;">
+                <div class="section-head">
+                    <div class="micro-label">Key Advantages</div>
+                    <h2>What no competitor offers.</h2>
+                </div>
+
+                <div class="adv-grid">
+                    <div class="adv-card">
+                        <div class="adv-icon" style="background: rgba(123, 94, 167, 0.12); color: #D4C4FB;">AI</div>
+                        <h3>Advanced AI Engine</h3>
+                        <p>Powered by the latest ChatGPT models for intelligent analysis and proactive weekly audits.</p>
+                    </div>
+                    <div class="adv-card">
+                        <div class="adv-icon" style="background: rgba(46, 204, 113, 0.12); color: var(--green);">🔒</div>
+                        <h3>True Privacy-First</h3>
+                        <p>Your data lives on your device with AES-256-GCM encryption. Competitors store everything in their cloud.</p>
+                    </div>
+                    <div class="adv-card">
+                        <div class="adv-icon" style="background: rgba(224, 168, 77, 0.12); color: var(--amber);">$</div>
+                        <h3>Better Value</h3>
+                        <p>At $5.83/mo (yearly) for Pro and a feature-rich Free tier, Catalyst Cash is highly competitive while offering superior AI capabilities.</p>
+                    </div>
+                    <div class="adv-card">
+                        <div class="adv-icon" style="background: rgba(107, 163, 232, 0.12); color: var(--blue);">⚡</div>
+                        <h3>All-in-One Platform</h3>
+                        <p>Budget + Debt Simulator + Investments + FIRE Calculator + Credit Score + AI Chat + Card Portfolio. No competitor covers all of these.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Where They're Better (Honesty Section) ── -->
+            <section class="section fade-up" style="padding-top: 0;">
+                <div class="section-head">
+                    <div class="micro-label">Honest Transparency</div>
+                    <h2>Where the competition edges us — for now.</h2>
+                    <p>We believe in honesty over hype.</p>
+                </div>
+
+                <div class="honesty-grid">
+                    <div class="honesty-card">
+                        <div class="comp-name">YNAB</div>
+                        <p>A legacy pioneer of envelope budgeting with a dedicated community. If strict, manual zero-sum budgeting is your thing, YNAB paved the way.</p>
+                    </div>
+                    <div class="honesty-card">
+                        <div class="comp-name">Monarch Money</div>
+                        <p>Superior collaborative tools — unlimited partner sharing and joint budgets. Best for couples managing money together.</p>
+                    </div>
+                    <div class="honesty-card">
+                        <div class="comp-name">Origin</div>
+                        <p>Access to real human CFP® professionals for 1:1 financial planning meetings. Best if you want to talk to a certified advisor.</p>
+                    </div>
+                    <div class="honesty-card">
+                        <div class="comp-name">Copilot</div>
+                        <p>Apple Design Award winner with incredible iOS animations. Beautiful design — though categorization sends raw data to their cloud.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── CTA ── -->
+            <section class="section fade-up" style="padding-top: 10px;">
+                <div class="final-cta">
+                    <div>
+                        <div class="micro-label">The Bottom Line</div>
+                        <h2>More AI. More features. Competitively priced. Your data stays yours.</h2>
+                        <p>
+                            The only personal finance app with advanced AI audits,
+                            on-device privacy, and a real free tier.
+                        </p>
+                    </div>
+                    <div class="button-stack">
+                        <a href="https://testflight.apple.com/join/3rpWQq49" class="button-primary">Download the
+                            Beta</a>
+                        <a href="/" class="button-secondary">Back to Homepage</a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="shell">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-brandline">
+                        <img src="/icon-192.png" alt="Catalyst Cash Logo" width="32" height="32" loading="lazy" />
+                        Catalyst Cash
+                    </div>
+                    <p>Your weekly money audit for clear next moves, not more dashboard wallpaper.</p>
+                </div>
+
+                <div class="footer-links">
+                    <div class="footer-col">
+                        <h4>Product</h4>
+                        <a href="/#sample-audit">Sample Audit</a>
+                        <a href="/#difference">Why It Wins</a>
+                        <a href="/#pricing">Pricing</a>
+                        <a href="/compare.html">Compare</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Resources</h4>
+                        <a href="/guide.html">Guide</a>
+                        <a href="/privacy.html">Privacy Policy</a>
+                        <a href="/terms.html">Terms of Service</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Support</h4>
+                        <a href="mailto:support@catalystcash.app">support@catalystcash.app</a>
+                        <a href="https://testflight.apple.com/join/3rpWQq49">TestFlight Beta</a>
+                    </div>
+                </div>
+
+                <div class="disclaimer">
+                    Competitor pricing and features verified as of March 2026 from publicly available sources.
+                    Catalyst Cash provides AI-generated educational information only and is not tax, legal, investment,
+                    or financial advice. App names and trademarks belong to their respective owners and do not imply
+                    endorsement. Copyright 2026 Catalyst Cash. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        /* Hamburger */
+        (() => {
+            var btn = document.getElementById('hamburger-btn');
+            var nav = document.getElementById('nav-links');
+            var overlay = document.getElementById('mobile-overlay');
+            if (!btn || !nav) return;
+            function toggle() {
+                var open = nav.classList.toggle('open');
+                btn.classList.toggle('active');
+                btn.setAttribute('aria-expanded', String(open));
+                if (overlay) overlay.classList.toggle('active', open);
+            }
+            function close() {
+                nav.classList.remove('open');
+                btn.classList.remove('active');
+                btn.setAttribute('aria-expanded', 'false');
+                if (overlay) overlay.classList.remove('active');
+            }
+            btn.addEventListener('click', toggle);
+            if (overlay) overlay.addEventListener('click', close);
+            nav.querySelectorAll('a').forEach((a) => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = a.getAttribute('href');
+                    close();
+                    setTimeout(() => { window.location.href = target; }, 350);
+                });
+            });
+        })();
+
+        /* Scroll Animations (IntersectionObserver) */
+        (() => {
+            var els = document.querySelectorAll('.fade-up');
+            if (!els.length) return;
+            if (!('IntersectionObserver' in window)) {
+                els.forEach((el) => { el.classList.add('visible'); });
+                return;
+            }
+            var obs = new IntersectionObserver((entries) => {
+                entries.forEach((e) => {
+                    if (e.isIntersecting) {
+                        e.target.classList.add('visible');
+                        obs.unobserve(e.target);
+                    }
+                });
+            }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+            els.forEach((el) => { obs.observe(el); });
+        })();
+    </script>
+</body>
+
+</html>
