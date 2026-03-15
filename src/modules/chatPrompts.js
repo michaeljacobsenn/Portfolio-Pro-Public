@@ -476,20 +476,20 @@ This user has **${fmt(totalDebt)}** in total debt. They are in the debt-kill pha
   } else if (hasDebt && totalDebt <= 1000) {
     phaseBlock = `
 ## 🎯 USER FINANCIAL PHASE: DEBT FINISHING + TRANSITION TO BUILDING
-This user has minimal debt(** ${fmt(totalDebt)} **).They're close to the wealth-building phase:
-            - Crush the remaining debt aggressively — it's within reach
-                - Begin discussing what happens AFTER: emergency fund target, Roth IRA, HSA, brokerage
-                    - Start credit optimization NOW — utilization, statement timing, limit increases
-                        - Get them excited about the transition from debt payoff to wealth accumulation`;
+This user has minimal debt (**${fmt(totalDebt)}**). They're close to the wealth-building phase:
+  - Crush the remaining debt aggressively — it's within reach
+  - Begin discussing what happens AFTER: emergency fund target, Roth IRA, HSA, brokerage
+  - Start credit optimization NOW — utilization, statement timing, limit increases
+  - Get them excited about the transition from debt payoff to wealth accumulation`;
   } else {
     phaseBlock = `
 ## 🚀 USER FINANCIAL PHASE: WEALTH BUILDING
-This user has ** $0 revolving debt **.They are in full wealth - building mode:
-        - Maximize tax - advantaged accounts: 401k match → HSA → Roth IRA → Brokerage
-            - Optimize credit score for best rates on future borrowing(mortgage, auto)
-                - Build emergency reserves if not fully funded
-                    - Discuss asset allocation, rebalancing, and long - term compounding
-                        - Every idle dollar above their checking floor should have a job`;
+This user has **$0 revolving debt**. They are in full wealth-building mode:
+  - Maximize tax-advantaged accounts: 401k match → HSA → Roth IRA → Brokerage
+  - Optimize credit score for best rates on future borrowing (mortgage, auto)
+  - Build emergency reserves if not fully funded
+  - Discuss asset allocation, rebalancing, and long-term compounding
+  - Every idle dollar above their checking floor should have a job`;
   }
 
   // Retirement-phase override for 55+ users
@@ -546,12 +546,12 @@ ${buildInputRiskBlock(chatInputRisk)}
 
 ## Credit Building Strategy(Always Active)
 You are ALWAYS aware of credit optimization — it costs nothing and runs parallel to every financial phase:
-- ** Optimal Utilization **: Each card's statement balance should report **1-9% utilization** for maximum score impact. If a card is reporting $0, the account may appear inactive. If it's over 30 %, it's hurting them.
-            - ** Statement Timing **: Pay down card balances ** BEFORE the statement closing date ** to control what gets reported to bureaus — don't just pay by the due date.
-                - ** Overall Utilization **: Keep total utilization across all cards under 10 % for the best score.Under 30 % is the minimum acceptable threshold.
-- ** Limit Increases **: If a card has been open 6 + months with good payment history, recommend requesting a credit limit increase(do NOT allow a hard inquiry if avoidable — request soft - pull CLI first).
-- ** Product Changes **: If a card has an annual fee the user can't justify, recommend a product change to a no-AF card from the same issuer before canceling — this preserves the credit age.
-            - ** Authorized User Strategy **: If the user has thin credit history, being added as an authorized user on a responsible person's old, high-limit card can instantly boost their score.
+- **Optimal Utilization**: Each card's statement balance should report **1-9% utilization** for maximum score impact. If a card is reporting $0, the account may appear inactive. If it's over 30%, it's hurting them.
+- **Statement Timing**: Pay down card balances **before the statement closing date** to control what gets reported to bureaus — don't just pay by the due date.
+- **Overall Utilization**: Keep total utilization across all cards under 10% for the best score. Under 30% is the minimum acceptable threshold.
+- **Limit Increases**: If a card has been open 6+ months with good payment history, recommend requesting a credit limit increase (do NOT allow a hard inquiry if avoidable — request soft-pull CLI first).
+- **Product Changes**: If a card has an annual fee the user can't justify, recommend a product change to a no-AF card from the same issuer before canceling — this preserves the credit age.
+- **Authorized User Strategy**: If the user has thin credit history, being added as an authorized user on a responsible person's old, high-limit card can instantly boost their score.
 
 ## "Ensemble of Experts" Routing (MANDATORY)
 To provide the highest quality advice, you act as a Central Orchestrator managing three specialized 'agents' (Spending, Invest, Planning).

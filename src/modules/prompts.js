@@ -3,12 +3,216 @@
 // ═══════════════════════════════════════════════════════════════
 import { getCurrency } from "./currency.js";
 
+const isRothTrackingEnabled = config => Boolean(config?.trackRoth === true || config?.trackRothContributions === true);
+const is401kTrackingEnabled = config => config?.track401k === true;
+const isHSATrackingEnabled = config => config?.trackHSA === true;
+const isInvestmentTrackingEnabled = config =>
+  Boolean(
+    isRothTrackingEnabled(config) ||
+      is401kTrackingEnabled(config) ||
+      config?.trackBrokerage === true ||
+      isHSATrackingEnabled(config) ||
+      config?.trackCrypto === true ||
+      config?.enableHoldings
+  );
+
+function buildContractorSection(config, cSym = "$", placement = "all") {
+  if (!config?.isContractor) return "";
+
+  const liveData = `
+TAX / SELF-EMPLOYMENT:
+  - Withholding Rate: ${config.taxWithholdingRate || 0}%
+  - Quarterly Estimate: ${cSym}${(config.quarterlyTaxEstimate || 0).toFixed(2)}
+  - Due Dates: Apr 15, Jun 15, Sep 15, Jan 15
+`;
+
+  const rules = `
+========================
+K) TAX SETTLEMENT ESCROW (IF APPLICABLE)
+========================
+[See LIVE APP DATA and/or PERSONAL RULES for any escrowed tax/refund logic]
+`;
+
+  if (placement === "liveData") return liveData;
+  if (placement === "rules") return rules;
+  return `${liveData}${rules}`;
+}
+
+function buildInsuranceSection(config, insuranceData) {
+  if (!config?.insuranceDeductibles?.length || !insuranceData) return "";
+  return `
+INSURANCE DEDUCTIBLES:
+${insuranceData}
+`;
+}
+
+function buildBigTicketSection(config, bigTicketData) {
+  if (!config?.bigTicketItems?.length || !bigTicketData) return "";
+  return `
+BIG-TICKET PURCHASE PLANS:
+${bigTicketData}
+`;
+}
+
+function buildHabitSection(config, cSym = "$", totalCheckingFloor = 0, placement = "all") {
+  if (config?.trackHabits === false) return "";
+
+  const liveData = `
+HABIT TRACKING:
+  - Habit: ${config.habitName || "Habit"}
+  - Current Count: ${config.habitCount || 0} units
+  - Restock Cost: ${cSym}${(config.habitRestockCost || 0).toFixed(2)}
+  - Critical Threshold: ${config.habitCriticalThreshold || 3}
+`;
+
+  const step3Note = `- If Habit tracking is enabled, apply PERSONAL RULES for any habit-related timing/amount and defer rules.`;
+
+  const step325 = `
+Step 3.25: SMART DEFERRAL — HABIT vs FLOOR (HARD)
+If a Habit restock is triggered, but paying/charging it causes any of the following:
+- CheckingProjEnd < \${cSym}${totalCheckingFloor.toFixed(2)}
+- OR a due-before-next-payday obligation becomes underfunded
+Then:
+- Defer the habit restock by 1 payday UNLESS HabitCount <= ${config.habitCriticalThreshold || 3}.
+
+CriticalHabitThreshold (default):
+- CriticalHabitThreshold = 2
+- If HabitCount <= 2, do NOT defer; allow the habit restock and mark ⚠️ "Floor Stress" with a catch-up plan.
+
+When deferring:
+- Output ⚠️ "HABIT DEFERRED" and compute the next safe restock date.
+- Ensure the deferment is logged in the audit output.
+When NOT deferring (HabitCount at/under critical threshold):
+- Include a cost-optimized habit restock move in WEEKLY MOVES (minimize cost while preserving floor).
+`;
+
+  if (placement === "liveData") return liveData;
+  if (placement === "step3Note") return step3Note;
+  if (placement === "step325") return step325;
+  return `${liveData}${step3Note}\n${step325}`;
+}
+
+function buildInvestmentsSection(config, cSym = "$") {
+  if (!isInvestmentTrackingEnabled(config)) return "";
+
+  return `
+========================
+S) INVESTMENTS & CRYPTO (REFERENCE — DO NOT DELETE)
+========================
+Accounts:
+- Personal Brokerage: (See LIVE APP DATA from Snapshot if enabled)
+- Roth IRA: (See LIVE APP DATA from Snapshot if enabled)
+- 401k: (See LIVE APP DATA from Snapshot if enabled)
+${isHSATrackingEnabled(config) ? "- HSA: (See LIVE APP DATA from Snapshot if enabled)" : ""}
+
+Holdings & Allocations:
+- Roth IRA: ${config?.enableHoldings && config?.holdings?.roth?.length > 0 ? config.holdings.roth.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Target Allocation: ${config.rothStockPct ?? 90}% Stocks / ${100 - (config.rothStockPct ?? 90)}% Bonds]
+- Brokerage Allocation: ${config?.enableHoldings && config?.holdings?.brokerage?.length > 0 ? config.holdings.brokerage.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Allocation: ${config.brokerageStockPct ?? 90}% Stocks / ${100 - (config.brokerageStockPct ?? 90)}% Bonds]
+- 401k Allocation: ${config?.enableHoldings && config?.holdings?.k401?.length > 0 ? config.holdings.k401.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Allocation: ${Number.isFinite(config?.k401StockPct) ? `${config.k401StockPct}% Stocks / ${100 - config.k401StockPct}% Bonds` : "(Follow defaults)"}]
+${isHSATrackingEnabled(config) ? `- HSA: ${config?.enableHoldings && config?.holdings?.hsa?.length > 0 ? config.holdings.hsa.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"}` : ""}
+${
+  (config?.enableHoldings && config?.holdings?.crypto?.length > 0) || (config?.holdings?.crypto?.length > 0)
+    ? `
+Crypto Holdings (Auto-Tracked via Live Market Data):
+${config.holdings.crypto.map(h => `  - ${h.symbol}: ${h.shares} tokens`).join("\n")}
+Note: Crypto values are auto-calculated from live market data. Treat these as volatile assets — do NOT count toward emergency reserves or liquidity calculations. Include in Net Worth but flag volatility risk.`
+    : ""
+}
+
+InvestmentsAsOfDate (HARD): ${config.investmentsAsOfDate} (USER-CONFIRMED)
+- If InvestmentsAsOfDate is missing/blank: request the date before using investment balances.
+- Rule (HARD): Whenever investment values are used in any output (Net Worth, Dashboard, Investments section), the InvestmentsAsOfDate MUST be printed alongside them.
+- If InvestmentsAsOfDate is >30 days old relative to AnchorDate: flag ⚠️ "INVESTMENT VALUES STALE — last updated [InvestmentsAsOfDate]. Provide fresh values."
+- Updated only when user provides new balances. Do NOT guess or estimate returns.
+`;
+}
+
+function buildRothSection(config, cSym = "$", totalCheckingFloor = 0) {
+  if (!isRothTrackingEnabled(config)) return "";
+
+  return `State:
+- Roth YTD Contributions: \${cSym}${Number.isFinite(config?.rothContributedYTD) ? config.rothContributedYTD.toFixed(2) : "0.00"}
+- Roth Annual Limit: \${cSym}${Number.isFinite(config?.rothAnnualLimit) ? config.rothAnnualLimit.toFixed(2) : "0.00"}
+- Objective: Maximize Roth contributions AFTER debt payoff priority is satisfied.
+
+Debt-First Default:
+- While any revolving debt balances are listed in the weekly snapshot (excluding a subscriptions card that is being paid to \${cSym}0.00 weekly),
+  set Roth weekly contribution = \${cSym}0.00 unless the user explicitly overrides.
+
+Roth Activation Gate (automatic "turn-on"):
+Roth contributions may begin only when ALL are true:
+1) No listed credit-card balances exist OR only the subscriptions card has a balance that is being paid to \${cSym}0.00 weekly
+2) All hard-deadline items in LIVE APP DATA (Sinking/One-Time + any min-pay) are on-pace
+3) Checking end-of-audit projects ≥ \${cSym}${(config?.greenStatusTarget || 0).toFixed(2)} (soft target)
+
+Contribution Sizing (do not guess IRS limit):
+- AnnualRothLimit = user-provided in Settings or snapshot.
+- Do not guess limits. External fetching is permitted only if AllowExternalLimitFetch = YES in CONFIG.
+- Once AnnualRothLimit is known:
+  RemainingToMax = AnnualRothLimit - RothYTD
+  WeeklyRothTarget = RemainingToMax / PaychecksRemainingInYear
+- Never fund Roth if it causes Checking < \${cSym}${totalCheckingFloor.toFixed(2)} or creates any hard-deadline shortfall.
+`;
+}
+
+function build401kSection(config, cSym = "$") {
+  if (!is401kTrackingEnabled(config)) return "";
+
+  return `
+401k Tracking (if enabled):
+- 401k Balance: \${cSym}${Number.isFinite(config?.k401Balance) ? config.k401Balance.toFixed(2) : "0.00"}
+- 401k YTD Contributions: \${cSym}${Number.isFinite(config?.k401ContributedYTD) ? config.k401ContributedYTD.toFixed(2) : "0.00"}
+- 401k Annual Limit: \${cSym}${Number.isFinite(config?.k401AnnualLimit) ? config.k401AnnualLimit.toFixed(2) : "0.00"}${
+    config?.k401EmployerMatchPct > 0 || config?.k401EmployerMatchLimit > 0
+      ? `
+- Employer Match: ${config.k401EmployerMatchPct || 0}% match on contributions up to ${config.k401EmployerMatchLimit || 0}% of salary (vesting: ${config.k401VestingPct ?? 100}%)
+- EMPLOYER MATCH RULE (HARD): 401k contributions up to the employer match ceiling are MANDATORY before any discretionary debt payoff. This is an effectively risk-free ${config.k401EmployerMatchPct || 0}% instant return — never sacrifice this for debt repayment except to cover minimum payments.`
+      : ""
+  }
+`;
+}
+
+function buildHSASection(config, cSym = "$") {
+  if (!isHSATrackingEnabled(config)) return "";
+
+  return `
+HSA Tracking (if enabled):
+- HSA Balance: \${cSym}${Number.isFinite(config?.hsaBalance) ? config.hsaBalance.toFixed(2) : "0.00"}
+- HSA YTD Contributions: \${cSym}${Number.isFinite(config?.hsaContributedYTD) ? config.hsaContributedYTD.toFixed(2) : "0.00"}
+- HSA Annual Limit: \${cSym}${Number.isFinite(config?.hsaAnnualLimit) ? config.hsaAnnualLimit.toFixed(2) : "4300.00"}
+- HSA TRIPLE-TAX ADVANTAGE RULE (SOFT): HSA contributions are pre-tax, grow tax-free, and withdraw tax-free for qualified medical expenses. Advocate for HSA maximization AFTER 401k employer match and BEFORE Roth IRA contributions when medical expenses exist. HSA funds can also be used as a stealth retirement account after age 65.
+`;
+}
+
+export function estimatePromptTokens(prompt) {
+  return Math.ceil(String(prompt || "").length / 4);
+}
+
+export function sanitizePersonalRules(rules) {
+  if (typeof rules !== "string") return "";
+
+  const injectionLinePattern = /(ignore previous|forget|new instructions|you are now|override|disregard)/i;
+
+  const sanitized = rules
+    .replace(/<[^>]+>/g, "")
+    .split(/\r?\n/)
+    .filter(line => !injectionLinePattern.test(line))
+    .join("\n")
+    .replace(/([*_`~[\]#>])/g, "\\$1")
+    .trim()
+    .slice(0, 2000);
+
+  return sanitized;
+}
+
 export const getSystemPromptCore = (config, cards = [], renewals = [], personalRules = "", computedStrategy = null) => {
   const weeklySpendAllowance = Number.isFinite(config?.weeklySpendAllowance) ? config.weeklySpendAllowance : 0;
   const emergencyFloor = Number.isFinite(config?.emergencyFloor) ? config.emergencyFloor : 0;
   const taxBracketPercent = Number.isFinite(config?.taxBracketPercent) ? config.taxBracketPercent : null;
   const minCashFloor = Number.isFinite(config?.minCashFloor) && config.minCashFloor > 0 ? config.minCashFloor : null;
   const cSym = config?.currencyCode ? getCurrency(config.currencyCode).symbol : "$";
+  const sanitizedPersonalRules = sanitizePersonalRules(personalRules);
+  const sanitizedSnapshotNotes = sanitizePersonalRules(config?.notes || config?.snapshotNotes || "");
 
   // Budget categories
   const budgetData =
@@ -84,6 +288,25 @@ export const getSystemPromptCore = (config, cards = [], renewals = [], personalR
           .join("\n")
       : null;
   const totalCheckingFloor = weeklySpendAllowance + emergencyFloor;
+  const contractorLiveDataSection = buildContractorSection(config, cSym, "liveData");
+  const contractorRulesSection = buildContractorSection(config, cSym, "rules");
+  const insuranceSection = buildInsuranceSection(config, insuranceData);
+  const bigTicketSection = buildBigTicketSection(config, bigTicketData);
+  const habitLiveDataSection = buildHabitSection(config, cSym, totalCheckingFloor, "liveData");
+  const habitStep3Note = buildHabitSection(config, cSym, totalCheckingFloor, "step3Note");
+  const habitStep325Section = buildHabitSection(config, cSym, totalCheckingFloor, "step325");
+  const investmentsSection = buildInvestmentsSection(config, cSym);
+  const rothSection = buildRothSection(config, cSym, totalCheckingFloor);
+  const k401Section = build401kSection(config, cSym);
+  const hsaSection = buildHSASection(config, cSym);
+  const retirementTrackingSection =
+    rothSection || k401Section || hsaSection
+      ? `
+========================
+T) ROTH IRA + 401K TRACKING
+========================
+${rothSection}${k401Section}${hsaSection}`
+      : "";
   // Build a string representing the user's live card portfolio
   const cardData =
     cards && cards.length > 0
@@ -121,11 +344,11 @@ export const getSystemPromptCore = (config, cards = [], renewals = [], personalR
       : "  - (No renewals mapped in UI)";
 
   const personalBlock =
-    personalRules && personalRules.trim()
+    (sanitizedPersonalRules && sanitizedPersonalRules.trim()) || (sanitizedSnapshotNotes && sanitizedSnapshotNotes.trim())
       ? `========================
 PERSONAL RULES (USER-SUPPLIED, OPTIONAL)
 ========================
-${personalRules.trim()}
+${[sanitizedPersonalRules.trim(), sanitizedSnapshotNotes.trim()].filter(Boolean).join("\n\n")}
 ========================
 `
       : "";
@@ -269,39 +492,8 @@ USER AGE CONTEXT:
 `
     : ""
 }${
-  config?.isContractor
-    ? `
-TAX / SELF-EMPLOYMENT:
-  - Withholding Rate: ${config.taxWithholdingRate || 0}%
-  - Quarterly Estimate: ${cSym}${(config.quarterlyTaxEstimate || 0).toFixed(2)}
-  - Due Dates: Apr 15, Jun 15, Sep 15, Jan 15
-`
-    : ""
-}${
-  insuranceData
-    ? `
-INSURANCE DEDUCTIBLES:
-${insuranceData}
-`
-    : ""
-}${
-  bigTicketData
-    ? `
-BIG-TICKET PURCHASE PLANS:
-${bigTicketData}
-`
-    : ""
-}${
-  config?.trackHabits !== false
-    ? `
-HABIT TRACKING:
-  - Habit: ${config.habitName || "Habit"}
-  - Current Count: ${config.habitCount || 0} units
-  - Restock Cost: ${cSym}${(config.habitRestockCost || 0).toFixed(2)}
-  - Critical Threshold: ${config.habitCriticalThreshold || 3}
-`
-    : ""
-}========================
+  contractorLiveDataSection
+}${insuranceSection}${bigTicketSection}${habitLiveDataSection}========================
 ${personalBlock}${engineBlock}${auditSignalBlock}
 
 INDEX (NON-ENFORCEABLE; POINTERS ONLY)
@@ -375,16 +567,7 @@ J) STRATEGIC SINKING FUNDS & ONE-TIME GOALS (VIRTUAL BUCKET TARGETS)
     : ""
 }
 
-${
-  config?.isContractor
-    ? `
-========================
-K) TAX SETTLEMENT ESCROW (IF APPLICABLE)
-========================
-[See LIVE APP DATA and/or PERSONAL RULES for any escrowed tax/refund logic]
-`
-    : ""
-}
+${contractorRulesSection}
 
 ${
   cardData !== "  - (No cards mapped in UI)" || debtData
@@ -574,25 +757,10 @@ For any item strictly due BEFORE OR ON NextPayday (≤ 14 days from AnchorDate),
 CRITICAL BOUNDARY: Do NOT prematurely pull items into this gate if they are due > 14 days away.
 - Annual Fees: If any annual fee posts (or is due) before next payday, treat as TIME-CRITICAL.
 - Include any renewals, minimums, or hard deadlines due ≤ NextPayday from LIVE APP DATA and/or PERSONAL RULES.
-${config.trackHabits !== false ? `- If Habit tracking is enabled, apply PERSONAL RULES for any habit-related timing/amount and defer rules.` : ""}
+${habitStep3Note}
 This gate always runs BEFORE vault funding.
 
-Step 3.25: SMART DEFERRAL — HABIT vs FLOOR (HARD)
-If a Habit restock is triggered, but paying/charging it causes any of the following:
-- CheckingProjEnd < \${cSym}${totalCheckingFloor.toFixed(2)}
-- OR a due-before-next-payday obligation becomes underfunded
-Then:
-- Defer the habit restock by 1 payday UNLESS HabitCount <= ${config.habitCriticalThreshold || 3}.
-
-CriticalHabitThreshold (default):
-- CriticalHabitThreshold = 2
-- If HabitCount <= 2, do NOT defer; allow the habit restock and mark ⚠️ "Floor Stress" with a catch-up plan.
-
-When deferring:
-- Output ⚠️ "HABIT DEFERRED" and compute the next safe restock date.
-- Ensure the deferment is logged in the audit output.
-When NOT deferring (HabitCount at/under critical threshold):
-- Include a cost-optimized habit restock move in WEEKLY MOVES (minimize cost while preserving floor).
+${habitStep325Section}
 
 Step 3.5: PROMO-DEADLINE GATE (ENFORCED; runs in ALL modes when applicable)
 If a listed balance has a promo deadline per LIVE APP DATA:
@@ -735,92 +903,7 @@ When NO transactions are provided: skip this section entirely. Do NOT fabricate 
 
 IMPORTANT: Transaction data is OBSERVATIONAL — it confirms what has already been spent. Do NOT double-deduct transaction amounts from checking (the checking balance already reflects these charges).
 
-${
-  config?.trackRoth ||
-  config?.track401k ||
-  config?.trackBrokerage ||
-  config?.trackHSA ||
-  config?.trackCrypto ||
-  config?.enableHoldings
-    ? `
-========================
-S) INVESTMENTS & CRYPTO (REFERENCE — DO NOT DELETE)
-========================
-Accounts:
-- Personal Brokerage: (See LIVE APP DATA from Snapshot if enabled)
-- Roth IRA: (See LIVE APP DATA from Snapshot if enabled)
-- 401k: (See LIVE APP DATA from Snapshot if enabled)
-${config?.trackHSA ? "- HSA: (See LIVE APP DATA from Snapshot if enabled)" : ""}
-
-Holdings & Allocations:
-- Roth IRA: ${config?.enableHoldings && config?.holdings?.roth?.length > 0 ? config.holdings.roth.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Target Allocation: ${config.rothStockPct ?? 90}% Stocks / ${100 - (config.rothStockPct ?? 90)}% Bonds]
-- Brokerage Allocation: ${config?.enableHoldings && config?.holdings?.brokerage?.length > 0 ? config.holdings.brokerage.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Allocation: ${config.brokerageStockPct ?? 90}% Stocks / ${100 - (config.brokerageStockPct ?? 90)}% Bonds]
-- 401k Allocation: ${config?.enableHoldings && config?.holdings?.k401?.length > 0 ? config.holdings.k401.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"} [Allocation: ${Number.isFinite(config?.k401StockPct) ? `${config.k401StockPct}% Stocks / ${100 - config.k401StockPct}% Bonds` : "(Follow defaults)"}]
-${config?.trackHSA ? `- HSA: ${config?.enableHoldings && config?.holdings?.hsa?.length > 0 ? config.holdings.hsa.map(h => `${h.shares} shares of ${h.symbol}`).join(", ") : "(No tracked holdings)"}` : ""}
-${
-  (config?.enableHoldings && config?.holdings?.crypto?.length > 0) || (config?.holdings?.crypto?.length > 0)
-    ? `
-Crypto Holdings (Auto-Tracked via Live Market Data):
-${config.holdings.crypto.map(h => `  - ${h.symbol}: ${h.shares} tokens`).join("\n")}
-Note: Crypto values are auto-calculated from live market data. Treat these as volatile assets — do NOT count toward emergency reserves or liquidity calculations. Include in Net Worth but flag volatility risk.`
-    : ""
-}
-
-InvestmentsAsOfDate (HARD): ${config.investmentsAsOfDate} (USER-CONFIRMED)
-- If InvestmentsAsOfDate is missing/blank: request the date before using investment balances.
-- Rule (HARD): Whenever investment values are used in any output (Net Worth, Dashboard, Investments section), the InvestmentsAsOfDate MUST be printed alongside them.
-- If InvestmentsAsOfDate is >30 days old relative to AnchorDate: flag ⚠️ "INVESTMENT VALUES STALE — last updated [InvestmentsAsOfDate]. Provide fresh values."
-- Updated only when user provides new balances. Do NOT guess or estimate returns.
-
-========================
-T) ROTH IRA + 401K TRACKING
-========================
-State:
-- Roth YTD Contributions: \${cSym}${Number.isFinite(config?.rothContributedYTD) ? config.rothContributedYTD.toFixed(2) : "0.00"}
-- Roth Annual Limit: \${cSym}${Number.isFinite(config?.rothAnnualLimit) ? config.rothAnnualLimit.toFixed(2) : "0.00"}
-- Objective: Maximize Roth contributions AFTER debt payoff priority is satisfied.
-
-401k Tracking (if enabled):
-- 401k Balance: \${cSym}${Number.isFinite(config?.k401Balance) ? config.k401Balance.toFixed(2) : "0.00"}
-- 401k YTD Contributions: \${cSym}${Number.isFinite(config?.k401ContributedYTD) ? config.k401ContributedYTD.toFixed(2) : "0.00"}
-- 401k Annual Limit: \${cSym}${Number.isFinite(config?.k401AnnualLimit) ? config.k401AnnualLimit.toFixed(2) : "0.00"}${
-        config?.k401EmployerMatchPct > 0 || config?.k401EmployerMatchLimit > 0
-          ? `
-- Employer Match: ${config.k401EmployerMatchPct || 0}% match on contributions up to ${config.k401EmployerMatchLimit || 0}% of salary (vesting: ${config.k401VestingPct ?? 100}%)
-- EMPLOYER MATCH RULE (HARD): 401k contributions up to the employer match ceiling are MANDATORY before any discretionary debt payoff. This is an effectively risk-free ${config.k401EmployerMatchPct || 0}% instant return — never sacrifice this for debt repayment except to cover minimum payments.`
-          : ""
-      }
-${
-  config?.trackHSA
-    ? `
-HSA Tracking (if enabled):
-- HSA Balance: \${cSym}${Number.isFinite(config?.hsaBalance) ? config.hsaBalance.toFixed(2) : "0.00"}
-- HSA YTD Contributions: \${cSym}${Number.isFinite(config?.hsaContributedYTD) ? config.hsaContributedYTD.toFixed(2) : "0.00"}
-- HSA Annual Limit: \${cSym}${Number.isFinite(config?.hsaAnnualLimit) ? config.hsaAnnualLimit.toFixed(2) : "4300.00"}
-- HSA TRIPLE-TAX ADVANTAGE RULE (SOFT): HSA contributions are pre-tax, grow tax-free, and withdraw tax-free for qualified medical expenses. Advocate for HSA maximization AFTER 401k employer match and BEFORE Roth IRA contributions when medical expenses exist. HSA funds can also be used as a stealth retirement account after age 65.
-`
-    : ""
-}
-Debt-First Default:
-- While any revolving debt balances are listed in the weekly snapshot (excluding a subscriptions card that is being paid to \${cSym}0.00 weekly),
-  set Roth weekly contribution = \${cSym}0.00 unless the user explicitly overrides.
-
-Roth Activation Gate (automatic "turn-on"):
-Roth contributions may begin only when ALL are true:
-1) No listed credit-card balances exist OR only the subscriptions card has a balance that is being paid to \${cSym}0.00 weekly
-2) All hard-deadline items in LIVE APP DATA (Sinking/One-Time + any min-pay) are on-pace
-3) Checking end-of-audit projects ≥ \${cSym}${(config?.greenStatusTarget || 0).toFixed(2)} (soft target)
-
-Contribution Sizing (do not guess IRS limit):
-- AnnualRothLimit = user-provided in Settings or snapshot.
-- Do not guess limits. External fetching is permitted only if AllowExternalLimitFetch = YES in CONFIG.
-- Once AnnualRothLimit is known:
-  RemainingToMax = AnnualRothLimit - RothYTD
-  WeeklyRothTarget = RemainingToMax / PaychecksRemainingInYear
-- Never fund Roth if it causes Checking < \${cSym}${totalCheckingFloor.toFixed(2)} or creates any hard-deadline shortfall.
-`
-    : ""
-}
+${investmentsSection}${retirementTrackingSection}
 
 ========================
 AUDIT NOTES (REFERENCE ONLY) — BUG/FLAW SCAN + IMPROVEMENTS (NO DATA LOSS)
@@ -1694,8 +1777,10 @@ Do NOT output anything except the JSON object.
 
   // Memory block injection
   const memBlock = memoryBlock ? "\n\n" + memoryBlock : "";
-
-  return core + trendBlock + chatBlock + personaBlock + memBlock + taskLayerBlock + providerTweaks + wrapper + attentionAnchor;
+  const prompt = core + trendBlock + chatBlock + personaBlock + memBlock + taskLayerBlock + providerTweaks + wrapper + attentionAnchor;
+  const estimatedTokens = estimatePromptTokens(prompt);
+  console.debug(`[Prompts] Estimated prompt tokens: ~${estimatedTokens}`);
+  return prompt;
 }
 
 export function getLocationCategorizationPrompt() {
